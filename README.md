@@ -54,11 +54,11 @@ GitHub Actions compila ambos APK en cada push (pestaña *Actions* → artefacto 
 
 ## Releases firmados
 
-Una sola vez:
+Usa los mismos secretos que tus otras apps, o crea una clave nueva. Una sola vez:
 
 1. Ejecuta `scripts/create-keystore.sh` en tu computador (necesita Java). Crea `finanzas-release.jks` y `keystore.properties`, ambos fuera de git.
    **Guarda el `.jks` y la contraseña en un gestor de contraseñas**: si se pierden, las actualizaciones ya no se podrán instalar sobre la app.
-2. Carga los secretos `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS` y `SIGNING_KEY_PASSWORD` en *Settings → Secrets and variables → Actions*. El script lo hace solo si tienes `gh` instalado.
+2. Carga los secretos `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD` y `KEY_ALIAS` (opcional `KEY_PASSWORD` si la clave tiene otra contraseña) en *Settings → Secrets and variables → Actions*. El script lo hace solo si tienes `gh` instalado.
 
 Después, para publicar una versión, sube `versionCode`/`versionName` en `app/build.gradle.kts` y:
 

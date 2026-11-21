@@ -32,15 +32,14 @@ echo "✓ Creado $KEYSTORE y keystore.properties (ambos ignorados por git)."
 if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
   read -rp "¿Subir como secretos al repo de GitHub? [s/N] " UP
   if [[ "$UP" =~ ^[sS]$ ]]; then
-    base64 < "$KEYSTORE" | tr -d '\n' | gh secret set SIGNING_KEYSTORE_BASE64
-    printf %s "$PASS" | gh secret set SIGNING_STORE_PASSWORD
-    printf %s "$ALIAS" | gh secret set SIGNING_KEY_ALIAS
-    printf %s "$PASS" | gh secret set SIGNING_KEY_PASSWORD
+    base64 < "$KEYSTORE" | tr -d '\n' | gh secret set KEYSTORE_BASE64
+    printf %s "$PASS" | gh secret set KEYSTORE_PASSWORD
+    printf %s "$ALIAS" | gh secret set KEY_ALIAS
     echo "✓ Secretos subidos."
   fi
 else
   echo "Para CI, agrega estos secretos en GitHub (Settings → Secrets and variables → Actions):"
-  echo "  SIGNING_KEYSTORE_BASE64 = salida de: base64 < $KEYSTORE | tr -d '\\n'"
-  echo "  SIGNING_STORE_PASSWORD / SIGNING_KEY_PASSWORD = tu contraseña"
-  echo "  SIGNING_KEY_ALIAS = $ALIAS"
+  echo "  KEYSTORE_BASE64   = salida de: base64 < $KEYSTORE | tr -d '\\n'"
+  echo "  KEYSTORE_PASSWORD = tu contraseña"
+  echo "  KEY_ALIAS         = $ALIAS"
 fi
