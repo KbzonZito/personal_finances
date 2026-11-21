@@ -206,3 +206,21 @@ data class BudgetEntity(
     @PrimaryKey val categoryId: Long,
     val amount: Long,
 )
+
+/** Meta de ahorro. Si tiene cuenta asociada, el avance es el saldo de esa cuenta; si no, lo abonado a mano. */
+@Serializable
+@Entity(tableName = "goals")
+data class GoalEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val emoji: String = "🎯",
+    val target: Long,
+    val currencyCode: String = Currency.CLP.code,
+    val accountId: Long? = null,
+    val manualSaved: Long = 0,
+    val deadlineEpochDay: Long? = null,
+    val color: Long = 0xFF00B894,
+    val createdAt: Long = System.currentTimeMillis(),
+) {
+    val currency: Currency get() = Currency.fromCode(currencyCode)
+}

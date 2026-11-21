@@ -88,8 +88,12 @@ class ScreenshotTest {
             com.personalfinances.data.db.RecurringEntity(2, TxType.INCOME, 1, amount = 1_800_000, description = "Sueldo", categoryId = 14, dayOfMonth = 30, nextEpochDay = d + 6, autoCreate = true),
         )
         val budgets = listOf(com.personalfinances.data.db.BudgetEntity(2, 120_000), com.personalfinances.data.db.BudgetEntity(3, 40_000), com.personalfinances.data.db.BudgetEntity(0, 600_000))
+        val goals = listOf(
+            com.personalfinances.data.db.GoalEntity(1, "Fondo de emergencia", "☂️", 5_000_000, accountId = 2, color = 0xFF00B894),
+            com.personalfinances.data.db.GoalEntity(2, "Viaje a Japón", "✈️", 3_000_000, manualSaved = 850_000, deadlineEpochDay = today.plusMonths(10).withDayOfMonth(1).toEpochDay(), color = 0xFFE84393),
+        )
         val settings = Settings(themeMode = if (dark) ThemeMode.DARK else ThemeMode.LIGHT)
-        return FinanceSnapshot.build(settings, accounts, cats, txs.sortedByDescending { it.epochDay }, inst, pending, recurring, today, budgets)
+        return FinanceSnapshot.build(settings, accounts, cats, txs.sortedByDescending { it.epochDay }, inst, pending, recurring, today, budgets, goals)
     }
 
     private fun shot(name: String, dark: Boolean, content: @Composable (FinanceSnapshot) -> Unit) {
@@ -110,11 +114,12 @@ class ScreenshotTest {
 
     private val noop: () -> Unit = {}
 
-    @Test fun home_dark() = shot("home_dark", true) { HomeScreen(it, noop, {}, noop, noop, noop, {}, {}, noop, noop, noop, PaddingValues()) }
-    @Test fun home_light() = shot("home_light", false) { HomeScreen(it, noop, {}, noop, noop, noop, {}, {}, noop, noop, noop, PaddingValues()) }
+    @Test fun home_dark() = shot("home_dark", true) { HomeScreen(it, noop, {}, noop, noop, noop, {}, {}, noop, noop, noop, noop, PaddingValues()) }
+    @Test fun home_light() = shot("home_light", false) { HomeScreen(it, noop, {}, noop, noop, noop, {}, {}, noop, noop, noop, noop, PaddingValues()) }
     @Test fun onboarding_dark() = shot("onboarding_dark", true) { OnboardingScreen(it.copy(accounts = emptyList()), MainViewModel((org.robolectric.RuntimeEnvironment.getApplication() as com.personalfinances.FinanceApp).container), {}) }
     @Test fun projection_dark() = shot("projection_dark", true) { com.personalfinances.ui.screens.ProjectionScreen(it, noop, noop) }
     @Test fun reports_dark() = shot("reports_dark", true) { com.personalfinances.ui.screens.ReportsScreen(it, noop, PaddingValues()) }
+    @Test fun goals_dark() = shot("goals_dark", true) { com.personalfinances.ui.screens.GoalsScreen(it, MainViewModel((org.robolectric.RuntimeEnvironment.getApplication() as com.personalfinances.FinanceApp).container), noop) }
     @Test fun cards_dark() = shot("cards_dark", true) { CardsScreen(it, {}, noop, PaddingValues()) }
     @Test fun card_detail_dark() = shot("card_detail_dark", true) { CardDetailScreen(it, 3, noop, noop, {}, {}, {}) }
     @Test fun transactions_light() = shot("transactions_light", false) { TransactionsScreen(it, {}, PaddingValues()) }

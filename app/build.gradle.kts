@@ -24,8 +24,8 @@ android {
         applicationId = "com.personalfinances"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.5.0"
+        versionCode = 6
+        versionName = "0.6.0"
     }
 
     signingConfigs {
@@ -97,6 +97,7 @@ dependencies {
     implementation(libs.biometric)
     implementation(libs.fragment.ktx)
     implementation(libs.appcompat)
+    implementation(libs.splashscreen)
     debugImplementation(libs.compose.ui.tooling)
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

@@ -174,6 +174,23 @@ interface BudgetDao {
 }
 
 @Dao
+interface GoalDao {
+    @Query("SELECT * FROM goals ORDER BY createdAt")
+    fun observeAll(): Flow<List<GoalEntity>>
+
+    @Query("SELECT * FROM goals")
+    suspend fun getAll(): List<GoalEntity>
+
+    @Upsert suspend fun upsert(g: GoalEntity): Long
+
+    @Query("DELETE FROM goals WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    @Query("UPDATE goals SET accountId = NULL WHERE accountId = :accountId")
+    suspend fun unlinkAccount(accountId: Long)
+}
+
+@Dao
 interface MaintenanceDao {
     @Query("DELETE FROM accounts") suspend fun clearAccounts()
     @Query("DELETE FROM transactions") suspend fun clearTransactions()
@@ -184,6 +201,8 @@ interface MaintenanceDao {
     @Query("DELETE FROM merchant_rules") suspend fun clearMerchantRules()
     @Query("DELETE FROM recurring") suspend fun clearRecurring()
     @Query("DELETE FROM budgets") suspend fun clearBudgets()
+    @Query("DELETE FROM goals") suspend fun clearGoals()
+    @Insert suspend fun insertGoals(v: List<GoalEntity>)
     @Insert suspend fun insertBudgets(v: List<BudgetEntity>)
 
     @Insert suspend fun insertAccounts(v: List<AccountEntity>)
@@ -206,11 +225,13 @@ interface MaintenanceDao {
         merchantRules: List<MerchantRuleEntity>,
         recurring: List<RecurringEntity>,
         budgets: List<BudgetEntity>,
+        goals: List<GoalEntity>,
     ) {
         clearInstallments(); clearTransactions(); clearAccounts(); clearCategories()
         clearDetections(); clearSourceRules(); clearMerchantRules(); clearRecurring()
         insertRecurring(recurring)
         clearBudgets(); insertBudgets(budgets)
+        clearGoals(); insertGoals(goals)
         insertAccounts(accounts); insertCategories(categories); insertTransactions(transactions)
         insertInstallments(installments); insertDetections(detections)
         insertSourceRules(sourceRules); insertMerchantRules(merchantRules)

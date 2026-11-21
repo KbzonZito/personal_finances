@@ -62,4 +62,11 @@ class MigrationTest {
         db.execSQL("INSERT INTO budgets (categoryId, amount) VALUES (0, 500000)")
         db.query("SELECT amount FROM budgets WHERE categoryId = 0").use { it.moveToFirst(); assertEquals(500000L, it.getLong(0)) }
     }
+
+    @Test fun migrate5To6_addsGoals() {
+        helper.createDatabase("m56.db", 5).close()
+        val db = helper.runMigrationsAndValidate("m56.db", 6, true)
+        db.execSQL("INSERT INTO goals (name, emoji, target, currencyCode, accountId, manualSaved, deadlineEpochDay, color, createdAt) VALUES ('Viaje', '✈️', 1000, 'CLP', NULL, 0, NULL, 0, 0)")
+        db.query("SELECT COUNT(*) FROM goals").use { it.moveToFirst(); assertEquals(1, it.getInt(0)) }
+    }
 }

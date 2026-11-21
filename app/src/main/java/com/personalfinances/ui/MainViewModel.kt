@@ -61,6 +61,8 @@ class MainViewModel(private val c: AppContainer) : ViewModel() {
     fun setBudgetAlerts(v: Boolean) = io { c.settings.setBudgetAlerts(v) }
     fun saveBudget(categoryId: Long, amount: Long) = io { c.repository.saveBudget(com.personalfinances.data.db.BudgetEntity(categoryId, amount)) }
     fun deleteBudget(categoryId: Long) = io { c.repository.deleteBudget(categoryId) }
+    fun saveGoal(g: com.personalfinances.data.db.GoalEntity) = io { c.repository.saveGoal(g) }
+    fun deleteGoal(id: Long) = io { c.repository.deleteGoal(id) }
     fun finishOnboarding() = io { c.settings.setOnboardingDone() }
     fun saveRecurring(r: RecurringEntity) = io { c.repository.saveRecurring(r) }
     fun deleteRecurring(id: Long) = io { c.repository.deleteRecurring(id) }

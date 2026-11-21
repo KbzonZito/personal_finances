@@ -56,6 +56,7 @@ import com.personalfinances.ui.components.ProgressPill
 import com.personalfinances.ui.components.SectionHeader
 import com.personalfinances.ui.components.TransactionRow
 import com.personalfinances.ui.components.esCL
+import com.personalfinances.ui.components.sharedAccount
 import com.personalfinances.ui.components.monthLong
 import com.personalfinances.ui.theme.LocalFinanceColors
 import java.time.LocalDate
@@ -201,7 +202,7 @@ fun AccountDetailScreen(
     DetailScaffold(a.name, onBack, onEdit) { padding ->
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
             item {
-                Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp).sharedAccount(a.id)) {
                     Text("${a.type.emoji} ${a.type.label} · ${a.currency.code}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     AnimatedAmount(st.balance, a.currency, MaterialTheme.typography.displaySmall, hidden = hidden)
                 }

@@ -10,6 +10,7 @@ import com.personalfinances.data.db.InstallmentEntity
 import com.personalfinances.data.db.MerchantRuleEntity
 import com.personalfinances.data.db.RecurringEntity
 import com.personalfinances.data.db.BudgetEntity
+import com.personalfinances.data.db.GoalEntity
 import com.personalfinances.data.db.SourceRuleEntity
 import com.personalfinances.data.db.TransactionEntity
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +31,7 @@ data class BackupFile(
     val merchantRules: List<MerchantRuleEntity> = emptyList(),
     val recurring: List<RecurringEntity> = emptyList(),
     val budgets: List<BudgetEntity> = emptyList(),
+    val goals: List<GoalEntity> = emptyList(),
 )
 
 class BackupManager(private val context: Context, private val db: AppDatabase) {
@@ -46,6 +48,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
             merchantRules = db.rules().merchantRules(),
             recurring = db.recurring().getAll(),
             budgets = db.budgets().getAll(),
+            goals = db.goals().getAll(),
         )
         context.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(json.encodeToString(BackupFile.serializer(), file).toByteArray()) }
         file.transactions.size
@@ -54,7 +57,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
     suspend fun import(uri: Uri): Int = withContext(Dispatchers.IO) {
         val text = context.contentResolver.openInputStream(uri)!!.use { it.readBytes().decodeToString() }
         val f = json.decodeFromString(BackupFile.serializer(), text)
-        db.maintenance().replaceAll(f.accounts, f.transactions, f.installments, f.categories, f.detections, f.sourceRules, f.merchantRules, f.recurring, f.budgets)
+        db.maintenance().replaceAll(f.accounts, f.transactions, f.installments, f.categories, f.detections, f.sourceRules, f.merchantRules, f.recurring, f.budgets, f.goals)
         f.transactions.size
     }
 }

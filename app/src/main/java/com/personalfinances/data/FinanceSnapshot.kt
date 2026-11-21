@@ -6,6 +6,9 @@ import com.personalfinances.data.db.DetectionEntity
 import com.personalfinances.data.db.InstallmentEntity
 import com.personalfinances.data.db.RecurringEntity
 import com.personalfinances.data.db.BudgetEntity
+import com.personalfinances.data.db.GoalEntity
+import com.personalfinances.domain.GoalCalc
+import com.personalfinances.domain.GoalProgress
 import com.personalfinances.domain.BudgetCalc
 import com.personalfinances.domain.BudgetStatus
 import com.personalfinances.domain.ReportTx
@@ -62,6 +65,7 @@ data class FinanceSnapshot(
     val budgets: List<BudgetStatus> = emptyList(),
     /** Movimientos frecuentes, para completar la hoja rápida con un toque. */
     val favorites: List<Favorite> = emptyList(),
+    val goals: List<GoalState> = emptyList(),
     val loaded: Boolean = false,
 ) {
     /** Ingresos y gastos convertidos a la moneda principal, para reportes. */
@@ -110,6 +114,7 @@ data class FinanceSnapshot(
             recurring: List<RecurringEntity> = emptyList(),
             today: LocalDate = LocalDate.now(),
             budgets: List<BudgetEntity> = emptyList(),
+            goals: List<GoalEntity> = emptyList(),
         ): FinanceSnapshot {
             val accById = accounts.associateBy { it.id }
             val catById = categories.associateBy { it.id }
@@ -164,6 +169,13 @@ data class FinanceSnapshot(
                     BudgetCalc.status(b.categoryId, b.amount, spent, today)
                 }.sortedByDescending { it.fraction },
                 favorites = Favorites.compute(txs, today),
+                goals = goals.map { g ->
+                    val acc = states.firstOrNull { it.account.id == g.accountId }
+                    val current = acc?.let { rates.convert(it.balance, it.account.currency, g.currency) } ?: g.manualSaved
+                    GoalState(g, acc?.account?.name, GoalCalc.progress(
+                        g.target, current, today, g.deadlineEpochDay?.let(LocalDate::ofEpochDay), acc?.account?.annualRate ?: 0.0,
+                    ))
+                },
                 loaded = true,
             )
         }
@@ -267,3 +279,5 @@ object Favorites {
             .take(max)
     }
 }
+
+data class GoalState(val goal: GoalEntity, val accountName: String?, val progress: GoalProgress)

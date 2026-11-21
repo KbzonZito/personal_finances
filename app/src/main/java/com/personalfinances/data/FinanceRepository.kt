@@ -12,6 +12,7 @@ import com.personalfinances.data.db.MerchantRuleEntity
 import com.personalfinances.data.db.SourceRuleEntity
 import com.personalfinances.data.db.RecurringEntity
 import com.personalfinances.data.db.BudgetEntity
+import com.personalfinances.data.db.GoalEntity
 import com.personalfinances.domain.Frequency
 import com.personalfinances.domain.Recurrence
 import com.personalfinances.data.db.SystemCategory
@@ -80,9 +81,11 @@ class FinanceRepository(
     ) { a, c, t, i -> Raw(a, c, t, i) }
 
     /** Estado completo de la app, calculado una sola vez y compartido por todas las pantallas. */
+    private val plans = combine(db.recurring().observeAll(), db.budgets().observeAll(), db.goals().observeAll()) { r, b, g -> Triple(r, b, g) }
+
     val snapshot: StateFlow<FinanceSnapshot> = combine(
-        raw, settingsStore.settings, db.detections().observePending(), db.recurring().observeAll(), db.budgets().observeAll(),
-    ) { r, s, p, rec, b -> FinanceSnapshot.build(s, r.accounts, r.categories, r.txs, r.installments, p, rec, budgets = b) }
+        raw, settingsStore.settings, db.detections().observePending(), plans,
+    ) { r, s, p, (rec, b, g) -> FinanceSnapshot.build(s, r.accounts, r.categories, r.txs, r.installments, p, rec, budgets = b, goals = g) }
         .flowOn(Dispatchers.Default)
         .stateIn(scope, SharingStarted.Eagerly, FinanceSnapshot())
 
@@ -115,6 +118,7 @@ class FinanceRepository(
             db.transactions().deleteOwned(account.id)
             db.rules().deleteSourceRulesFor(account.id)
             db.recurring().deleteForAccount(account.id)
+            db.goals().unlinkAccount(account.id)
             db.accounts().delete(account)
         }
         onDataChanged()
@@ -236,6 +240,11 @@ class FinanceRepository(
         val rule = rules.firstOrNull { it.lastDigits == lastDigits.orEmpty() } ?: rules.firstOrNull()
         return rule?.accountId?.takeIf { id -> accounts.any { it.id == id } }
     }
+
+    // ---------- Metas ----------
+
+    suspend fun saveGoal(g: GoalEntity) = db.goals().upsert(g)
+    suspend fun deleteGoal(id: Long) = db.goals().delete(id)
 
     // ---------- Presupuestos ----------
 

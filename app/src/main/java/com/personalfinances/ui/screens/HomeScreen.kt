@@ -58,6 +58,7 @@ import com.personalfinances.ui.components.ProgressPill
 import com.personalfinances.ui.components.SectionHeader
 import com.personalfinances.ui.components.TransactionRow
 import com.personalfinances.ui.components.esCL
+import com.personalfinances.ui.components.sharedAccount
 import com.personalfinances.ui.components.monthLong
 import com.personalfinances.ui.theme.LocalFinanceColors
 import java.time.YearMonth
@@ -76,6 +77,7 @@ fun HomeScreen(
     onOpenRecurring: () -> Unit,
     onOpenProjection: () -> Unit,
     onOpenBudgets: () -> Unit,
+    onOpenGoals: () -> Unit,
     contentPadding: PaddingValues,
 ) {
     val hidden = snapshot.settings.hideAmounts
@@ -194,6 +196,11 @@ fun HomeScreen(
             items(upcoming, key = { "rec" + it.id }) { r -> RecurringRow(r, snapshot, onClick = onOpenRecurring) }
         }
 
+        if (snapshot.goals.isNotEmpty()) {
+            item { SectionHeader("Metas", Modifier.padding(top = 12.dp), action = "Ver todas", onAction = onOpenGoals) }
+            items(snapshot.goals.take(2), key = { "goal" + it.goal.id }) { g -> GoalRow(g, hidden, onOpenGoals) }
+        }
+
         if (snapshot.budgets.isNotEmpty()) {
             item { SectionHeader("Presupuestos", Modifier.padding(top = 12.dp), action = "Ver todos", onAction = onOpenBudgets) }
             items(snapshot.budgets.take(3), key = { "bud" + it.categoryId }) { s -> BudgetRow(s, snapshot, onOpenBudgets) }
@@ -247,7 +254,7 @@ private fun StatPill(icon: androidx.compose.ui.graphics.vector.ImageVector, labe
 fun AccountCard(st: AccountState, hidden: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val a = st.account
     val base = Color(a.color)
-    PressableCard(onClick = onClick, color = Color.Transparent, modifier = modifier.size(width = 176.dp, height = 132.dp)) {
+    PressableCard(onClick = onClick, color = Color.Transparent, modifier = modifier.sharedAccount(a.id).size(width = 176.dp, height = 132.dp)) {
         Box(
             Modifier.fillMaxSize().background(Brush.linearGradient(listOf(base.copy(alpha = 0.95f), base.copy(alpha = 0.6f)))).padding(14.dp)
         ) {

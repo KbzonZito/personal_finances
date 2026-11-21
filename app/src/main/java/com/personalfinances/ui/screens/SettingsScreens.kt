@@ -39,6 +39,7 @@ import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.Savings
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.NotificationImportant
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Fingerprint
@@ -112,6 +113,7 @@ fun SettingsScreen(
     onOpenCategories: () -> Unit,
     onOpenRecurring: () -> Unit,
     onOpenBudgets: () -> Unit,
+    onOpenGoals: () -> Unit,
     contentPadding: PaddingValues,
 ) {
     val s = snapshot.settings
@@ -167,6 +169,7 @@ fun SettingsScreen(
             SettingRow(Icons.Outlined.Repeat, "Movimientos recurrentes", if (n == 0) "Sueldo, arriendo, suscripciones…" else "$n activos", onClick = onOpenRecurring)
         }
         item { SettingRow(Icons.Outlined.Savings, "Presupuestos", if (snapshot.budgets.isEmpty()) "Límites mensuales por categoría" else "${snapshot.budgets.size} activos", onClick = onOpenBudgets) }
+        item { SettingRow(Icons.Outlined.Flag, "Metas de ahorro", if (snapshot.goals.isEmpty()) "Viajes, fondo de emergencia…" else "${snapshot.goals.size} metas", onClick = onOpenGoals) }
         item { SwitchSetting(Icons.Outlined.NotificationImportant, "Alertas de presupuesto", "Al llegar al 80% y si te pasas", s.budgetAlerts, vm::setBudgetAlerts) }
         item { SwitchSetting(Icons.Outlined.Alarm, "Recordatorios de tarjetas", "3 días antes del vencimiento y el día de cierre", s.remindersEnabled, vm::setRemindersEnabled) }
         item { SettingRow(Icons.Outlined.Category, "Categorías", "${snapshot.categories.size} categorías", onClick = onOpenCategories) }

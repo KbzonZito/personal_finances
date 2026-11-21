@@ -42,6 +42,7 @@ import com.personalfinances.ui.components.PressableCard
 import com.personalfinances.ui.components.ProgressPill
 import com.personalfinances.ui.components.SectionHeader
 import com.personalfinances.ui.components.esCL
+import com.personalfinances.ui.components.sharedAccount
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -91,11 +92,11 @@ fun CardsScreen(snapshot: FinanceSnapshot, onOpenCard: (AccountState) -> Unit, o
 }
 
 @Composable
-fun CardVisual(st: AccountState, hidden: Boolean, onClick: () -> Unit) {
+fun CardVisual(st: AccountState, hidden: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val a = st.account
     val c = st.card
     val base = Color(a.color)
-    PressableCard(onClick = onClick, color = Color.Transparent, modifier = Modifier.fillMaxWidth().aspectRatio(1.9f)) {
+    PressableCard(onClick = onClick, color = Color.Transparent, modifier = modifier.sharedAccount(a.id).fillMaxWidth().aspectRatio(1.9f)) {
         Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(base, base.copy(alpha = 0.55f), Color.Black.copy(alpha = 0.6f)))).padding(20.dp)) {
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

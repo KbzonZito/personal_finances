@@ -27,6 +27,8 @@ App Android de finanzas personales: minimalista, rápida y pensada para Chile (C
 - **Presupuestos** por categoría o total del mes: barra de avance, cuánto puedes gastar por día, aviso si vas más rápido de lo normal y alertas al 80% y 100%. Sugiere el monto según tu promedio de 3 meses.
 - **Reportes** (pestaña propia): gastos del mes y variación vs. el anterior, ingresos, ahorro y tasa de ahorro, promedio diario, gasto estimado a fin de mes, dona por categoría, tendencia de 6 meses y dónde más gastaste.
 - **Favoritos**: los movimientos que repites (ej. "☕ Café $3.500") aparecen como atajos en la hoja rápida.
+- **Metas de ahorro**: asociadas a una cuenta (el avance es su saldo y considera su rentabilidad) o con abonos a mano; con fecha límite te dice cuánto ahorrar al mes.
+- **Animaciones**: la tarjeta de cada cuenta se transforma en su pantalla de detalle, gesto "atrás" predictivo (Android 14+) y splash screen hasta que los datos están listos.
 - **Recordatorios de tarjetas**: 3 días antes del vencimiento, el día del vencimiento y el día de cierre (nunca de noche).
 - **Agregar rápido**: widget de pantalla de inicio, tile en ajustes rápidos, accesos directos del ícono (mantener presionado) y teclado numérico propio.
 - **Respaldo**: los datos viven solo en el teléfono (Room). Respaldo automático semanal a una carpeta que elijas (guarda los últimos 6), exportar/importar JSON manual y backup automático de Android.

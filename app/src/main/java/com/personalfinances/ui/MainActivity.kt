@@ -3,6 +3,7 @@ package com.personalfinances.ui
 import android.os.Bundle
 import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.personalfinances.ui.lock.LockGate
 import com.personalfinances.ui.lock.WindowSettingsEffect
 import androidx.activity.compose.setContent
@@ -81,6 +82,7 @@ import com.personalfinances.ui.screens.RecurringScreen
 import com.personalfinances.ui.screens.ProjectionScreen
 import com.personalfinances.ui.screens.ReportsScreen
 import com.personalfinances.ui.screens.BudgetsScreen
+import com.personalfinances.ui.screens.GoalsScreen
 import com.personalfinances.ui.screens.OnboardingScreen
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.personalfinances.ui.screens.SettingsScreen
@@ -103,6 +105,8 @@ class MainActivity : FragmentActivity() {
     private val vm: MainViewModel by viewModels { MainViewModel.factory(container) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // La splash se mantiene hasta tener los datos listos: nunca se ve una pantalla vacía.
+        installSplashScreen().setKeepOnScreenCondition { !vm.snapshot.value.loaded }
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
@@ -115,7 +119,7 @@ class MainActivity : FragmentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 @Composable
 private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
     val nav = rememberNavController()
@@ -157,6 +161,8 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
         },
     ) { padding ->
         val pad = PaddingValues(bottom = padding.calculateBottomPadding())
+        androidx.compose.animation.SharedTransitionLayout {
+        androidx.compose.runtime.CompositionLocalProvider(com.personalfinances.ui.components.LocalSharedScope provides this) {
         NavHost(
             nav, startDestination = "home",
             enterTransition = { fadeIn(tween(220)) + slideInHorizontally(tween(260)) { it / 12 } },
@@ -164,7 +170,7 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
             popEnterTransition = { fadeIn(tween(220)) },
             popExitTransition = { fadeOut(tween(180)) + slideOutHorizontally(tween(240)) { it / 12 } },
         ) {
-            composable("home") {
+            screen("home") {
                 HomeScreen(
                     snapshot = snapshot,
                     onToggleHide = { vm.setHideAmounts(!snapshot.settings.hideAmounts) },
@@ -177,19 +183,21 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
                     onOpenRecurring = { nav.navigate("recurring") },
                     onOpenProjection = { nav.navigate("projection") },
                     onOpenBudgets = { nav.navigate("budgets") },
+                    onOpenGoals = { nav.navigate("goals") },
                     contentPadding = pad,
                 )
             }
-            composable("transactions") { TransactionsScreen(snapshot, openTx, pad) }
-            composable("cards") {
+            screen("transactions") { TransactionsScreen(snapshot, openTx, pad) }
+            screen("cards") {
                 CardsScreen(snapshot, onOpenCard = { nav.navigate("card/${it.account.id}") }, onNewCard = { nav.navigate("accountEdit?type=CREDIT_CARD") }, contentPadding = pad)
             }
-            composable("reports") { ReportsScreen(snapshot, onOpenBudgets = { nav.navigate("budgets") }, contentPadding = pad) }
-            composable("budgets") { BudgetsScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
-            composable("settings") {
-                SettingsScreen(snapshot, vm, onOpenNotifications = { nav.navigate("notifications") }, onOpenCategories = { nav.navigate("categories") }, onOpenRecurring = { nav.navigate("recurring") }, onOpenBudgets = { nav.navigate("budgets") }, contentPadding = pad)
+            screen("reports") { ReportsScreen(snapshot, onOpenBudgets = { nav.navigate("budgets") }, contentPadding = pad) }
+            screen("goals") { GoalsScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
+            screen("budgets") { BudgetsScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
+            screen("settings") {
+                SettingsScreen(snapshot, vm, onOpenNotifications = { nav.navigate("notifications") }, onOpenCategories = { nav.navigate("categories") }, onOpenRecurring = { nav.navigate("recurring") }, onOpenBudgets = { nav.navigate("budgets") }, onOpenGoals = { nav.navigate("goals") }, contentPadding = pad)
             }
-            composable("card/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
+            screen("card/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 val id = e.arguments!!.getLong("id")
                 CardDetailScreen(
                     snapshot, id,
@@ -200,7 +208,7 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
                     onOpenTransaction = openTx,
                 )
             }
-            composable("account/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
+            screen("account/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 val id = e.arguments!!.getLong("id")
                 AccountDetailScreen(
                     snapshot, id,
@@ -211,7 +219,7 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
                     onOpenTransaction = openTx,
                 )
             }
-            composable(
+            screen(
                 "accountEdit?id={id}&type={type}",
                 arguments = listOf(
                     navArgument("id") { type = NavType.LongType; defaultValue = -1L },
@@ -227,15 +235,17 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
                     onDelete = { vm.deleteAccount(it); nav.popBackStack("home", inclusive = false) },
                 )
             }
-            composable("pending") {
+            screen("pending") {
                 PendingScreen(snapshot, onBack = { nav.popBackStack() },
                     onConfirm = { openAdd(AddRequest(detectionId = it)) },
                     onDismiss = { vm.dismissDetection(it); DetectionNotifier.cancel(context, it) })
             }
-            composable("notifications") { NotificationSetupScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
-            composable("categories") { CategoriesScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
-            composable("recurring") { RecurringScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
-            composable("projection") { ProjectionScreen(snapshot, onBack = { nav.popBackStack() }, onOpenRecurring = { nav.navigate("recurring") }) }
+            screen("notifications") { NotificationSetupScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
+            screen("categories") { CategoriesScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
+            screen("recurring") { RecurringScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
+            screen("projection") { ProjectionScreen(snapshot, onBack = { nav.popBackStack() }, onOpenRecurring = { nav.navigate("recurring") }) }
+        }
+        }
         }
     }
 
@@ -277,6 +287,15 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
             )
         }
     }
+}
+
+/** Igual que composable(), pero expone el ámbito de animación para las transiciones compartidas. */
+private fun androidx.navigation.NavGraphBuilder.screen(
+    route: String,
+    arguments: List<androidx.navigation.NamedNavArgument> = emptyList(),
+    content: @Composable (androidx.navigation.NavBackStackEntry) -> Unit,
+) = composable(route, arguments) { entry ->
+    androidx.compose.runtime.CompositionLocalProvider(com.personalfinances.ui.components.LocalNavAnimScope provides this) { content(entry) }
 }
 
 private fun NavHostController.navigateTab(route: String) = navigate(route) {

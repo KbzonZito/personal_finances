@@ -59,7 +59,7 @@ Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo bá
 - [x] **Presupuestos por categoría** (M), con barra de avance y aviso al llegar al 80% y al 100%.
 - [x] **Reportes** (M): tendencia mensual, comparación con el mes anterior, gasto diario promedio, estimación de cierre de mes, top comercios.
 - [ ] **Evolución del patrimonio** (S): guardar el total cada día y graficarlo.
-- [ ] **Metas de ahorro** (S) ligadas a una cuenta remunerada: "con tu ritmo y la tasa de Tenpo, llegas a $X en N meses".
+- [x] **Metas de ahorro** (S) ligadas a una cuenta remunerada: "con tu ritmo y la tasa de Tenpo, llegas a $X en N meses".
 - [ ] Etiquetas y subcategorías; búsqueda por monto o rango de fechas (S).
 - [ ] Calendario mensual con vencimientos, cierres y recurrentes (M).
 
@@ -84,14 +84,14 @@ Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo bá
 
 **Rendimiento**
 - [ ] **Baseline Profiles** (M): arranque y scroll ~20–30% más fluidos. Se generan en GitHub Actions con un emulador administrado (Gradle Managed Devices).
-- [ ] **Splash Screen API** y no hacer trabajo pesado al abrir (S).
+- [x] **Splash Screen API** y no hacer trabajo pesado al abrir (S).
 - [ ] **Cálculo incremental** (M): hoy cada cambio recalcula todo en memoria. Funciona bien hasta unos ~10.000 movimientos; después conviene calcular los saldos con consultas SQL y paginar la lista de movimientos (Paging 3).
 - [ ] Revisar recomposiciones con los reportes del compilador de Compose; marcar modelos como `@Immutable` y separar el estado por pantalla (S).
 - [ ] `accrueYield` vuelve a leer todas las transacciones por cada cuenta; leerlas una sola vez (S).
 
 **Animaciones y UX**
-- [ ] **Shared element transitions** (M): la tarjeta de la cuenta se expande hasta la pantalla de detalle.
-- [ ] **Predictive back** (S), Android 14+.
+- [x] **Shared element transitions** (M): la tarjeta de la cuenta se expande hasta la pantalla de detalle.
+- [x] **Predictive back** (S), Android 14+.
 - [x] **Onboarding de 3 pasos** (S): moneda → primera cuenta → detección por notificaciones.
 - [ ] Haptics más variados, y confetti discreto al pagar una tarjeta completa 🎉 (S).
 
