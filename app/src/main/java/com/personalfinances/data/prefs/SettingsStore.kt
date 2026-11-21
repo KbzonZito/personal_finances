@@ -34,6 +34,13 @@ data class Settings(
     val lockTimeoutMinutes: Int = 1,
     /** FLAG_SECURE: oculta la app en recientes y bloquea capturas de pantalla. */
     val secureScreen: Boolean = false,
+    val remindersEnabled: Boolean = true,
+    val onboardingDone: Boolean = false,
+    /** Carpeta (SAF tree URI) para respaldos automáticos; null = desactivado. */
+    val autoBackupUri: String? = null,
+    val lastAutoBackup: Long = 0,
+    /** Recordatorios ya enviados (para no repetirlos). */
+    val sentReminders: Set<String> = emptySet(),
 )
 
 private val Context.dataStore by preferencesDataStore("settings")
@@ -51,6 +58,11 @@ class SettingsStore(private val context: Context) {
         val lock = booleanPreferencesKey("lock_enabled")
         val lockTimeout = intPreferencesKey("lock_timeout")
         val secure = booleanPreferencesKey("secure_screen")
+        val reminders = booleanPreferencesKey("reminders")
+        val onboarding = booleanPreferencesKey("onboarding_done")
+        val backupUri = stringPreferencesKey("auto_backup_uri")
+        val lastBackup = stringPreferencesKey("last_auto_backup")
+        val sent = stringSetPreferencesKey("sent_reminders")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { p ->
@@ -66,6 +78,11 @@ class SettingsStore(private val context: Context) {
             lockEnabled = p[K.lock] ?: false,
             lockTimeoutMinutes = p[K.lockTimeout] ?: 1,
             secureScreen = p[K.secure] ?: false,
+            remindersEnabled = p[K.reminders] ?: true,
+            onboardingDone = p[K.onboarding] ?: false,
+            autoBackupUri = p[K.backupUri],
+            lastAutoBackup = p[K.lastBackup]?.toLongOrNull() ?: 0,
+            sentReminders = p[K.sent] ?: emptySet(),
         )
     }
 
@@ -79,6 +96,16 @@ class SettingsStore(private val context: Context) {
     suspend fun setLockEnabled(v: Boolean) = context.dataStore.edit { it[K.lock] = v }
     suspend fun setLockTimeout(minutes: Int) = context.dataStore.edit { it[K.lockTimeout] = minutes }
     suspend fun setSecureScreen(v: Boolean) = context.dataStore.edit { it[K.secure] = v }
+    suspend fun setRemindersEnabled(v: Boolean) = context.dataStore.edit { it[K.reminders] = v }
+    suspend fun setOnboardingDone() = context.dataStore.edit { it[K.onboarding] = true }
+    suspend fun setAutoBackupUri(uri: String?) = context.dataStore.edit { if (uri == null) it.remove(K.backupUri) else it[K.backupUri] = uri }
+    suspend fun setLastAutoBackup(t: Long) = context.dataStore.edit { it[K.lastBackup] = t.toString() }
+
+    /** Guarda claves enviadas, conservando solo las últimas 60. */
+    suspend fun addSentReminders(keys: Collection<String>) = context.dataStore.edit {
+        it[K.sent] = ((it[K.sent] ?: emptySet()).toList() + keys).takeLast(60).toSet()
+    }
+
     suspend fun setWatchedPackages(v: Set<String>) = context.dataStore.edit { it[K.packages] = v }
 
     suspend fun setRates(rates: ExchangeRates) = context.dataStore.edit {

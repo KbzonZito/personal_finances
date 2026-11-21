@@ -1,6 +1,7 @@
 package com.personalfinances.data.db
 
 import androidx.room.TypeConverter
+import com.personalfinances.domain.Frequency
 import java.time.YearMonth
 
 class Converters {
@@ -12,6 +13,8 @@ class Converters {
     @TypeConverter fun txSource(v: TxSource) = v.name
     @TypeConverter fun detectionStatus(v: String) = DetectionStatus.valueOf(v)
     @TypeConverter fun detectionStatus(v: DetectionStatus) = v.name
+    @TypeConverter fun frequency(v: String) = Frequency.valueOf(v)
+    @TypeConverter fun frequency(v: Frequency) = v.name
 }
 
 fun YearMonth.toPeriod(): Int = year * 100 + monthValue

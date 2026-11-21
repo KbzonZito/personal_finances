@@ -25,20 +25,46 @@ object DetectionNotifier {
     const val ACTION_DISMISS = "com.personalfinances.DISMISS_DETECTION"
     const val EXTRA_ID = "detection_id"
 
+    const val CHANNEL_REMINDERS = "reminders"
+
     fun createChannel(context: Context) {
-        val channel = NotificationChannel(CHANNEL, "Movimientos detectados", NotificationManager.IMPORTANCE_DEFAULT).apply {
-            description = "Te pide confirmar compras detectadas en notificaciones de tus bancos"
-        }
-        context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        val nm = context.getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(NotificationChannel(CHANNEL, "Movimientos por confirmar", NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = "Compras detectadas en tus bancos y movimientos programados"
+        })
+        nm.createNotificationChannel(NotificationChannel(CHANNEL_REMINDERS, "Recordatorios de tarjetas", NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = "Vencimientos y cierres de tus tarjetas de crédito"
+        })
+    }
+
+    private fun canPost(context: Context) = android.os.Build.VERSION.SDK_INT < 33 ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+    /** Recordatorio de tarjeta: abre la app. */
+    fun showReminder(context: Context, id: Int, title: String, text: String) {
+        if (!canPost(context)) return
+        val open = PendingIntent.getActivity(
+            context, id, Intent(context, com.personalfinances.ui.MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val n = NotificationCompat.Builder(context, CHANNEL_REMINDERS)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        NotificationManagerCompat.from(context).notify(id, n)
     }
 
     fun show(context: Context, d: DetectionEntity) {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
-            android.os.Build.VERSION.SDK_INT >= 33
-        ) return
+        if (!canPost(context)) return
         val amount = Money.format(d.amount, d.currency)
         val what = if (d.isIncome) "Ingreso" else "Gasto"
-        val title = "$what de $amount" + (d.merchant?.let { " en $it" } ?: "")
+        val title = if (d.recurringId != null) "Programado: ${d.merchant ?: what} $amount"
+        else "$what de $amount" + (d.merchant?.let { " en $it" } ?: "")
+        val subtitle = if (d.recurringId != null) "${d.text} · Toca para confirmar" else "Detectado en ${d.appLabel} · Toca para confirmar"
         val open = PendingIntent.getActivity(
             context, d.id.toInt(),
             QuickAddActivity.intent(context, detectionId = d.id),
@@ -52,7 +78,7 @@ object DetectionNotifier {
         val n = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
-            .setContentText("Detectado en ${d.appLabel} · Toca para confirmar")
+            .setContentText(subtitle)
             .setContentIntent(open)
             .setAutoCancel(true)
             .addAction(0, "Registrar", open)

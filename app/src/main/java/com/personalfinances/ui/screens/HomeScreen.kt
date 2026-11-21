@@ -73,6 +73,7 @@ fun HomeScreen(
     onOpenTransactions: () -> Unit,
     onOpenTransaction: (Long) -> Unit,
     onPayCard: (AccountState) -> Unit,
+    onOpenRecurring: () -> Unit,
     contentPadding: PaddingValues,
 ) {
     val hidden = snapshot.settings.hideAmounts
@@ -168,6 +169,12 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+
+        val upcoming = snapshot.recurring.filter { it.active && it.nextEpochDay <= snapshot.today.plusDays(10).toEpochDay() }.take(4)
+        if (upcoming.isNotEmpty()) {
+            item { SectionHeader("Próximos", Modifier.padding(top = 12.dp), action = "Ver todos", onAction = onOpenRecurring) }
+            items(upcoming, key = { "rec" + it.id }) { r -> RecurringRow(r, snapshot, onClick = onOpenRecurring) }
         }
 
         if (snapshot.expenseByCategory.isNotEmpty()) {

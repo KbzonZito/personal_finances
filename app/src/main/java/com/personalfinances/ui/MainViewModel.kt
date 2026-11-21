@@ -11,6 +11,8 @@ import com.personalfinances.data.RatesFetcher
 import com.personalfinances.data.TransactionDraft
 import com.personalfinances.data.db.AccountEntity
 import com.personalfinances.data.db.CategoryEntity
+import com.personalfinances.data.db.RecurringEntity
+import com.personalfinances.data.backup.AutoBackup
 import com.personalfinances.data.prefs.ThemeMode
 import com.personalfinances.domain.Currency
 import com.personalfinances.domain.ExchangeRates
@@ -45,6 +47,28 @@ class MainViewModel(private val c: AppContainer) : ViewModel() {
     fun setLockEnabled(v: Boolean) = io { c.settings.setLockEnabled(v) }
     fun setLockTimeout(minutes: Int) = io { c.settings.setLockTimeout(minutes) }
     fun setSecureScreen(v: Boolean) = io { c.settings.setSecureScreen(v) }
+    fun setRemindersEnabled(v: Boolean) = io { c.settings.setRemindersEnabled(v) }
+    fun finishOnboarding() = io { c.settings.setOnboardingDone() }
+    fun saveRecurring(r: RecurringEntity) = io { c.repository.saveRecurring(r) }
+    fun deleteRecurring(id: Long) = io { c.repository.deleteRecurring(id) }
+
+    fun enableAutoBackup(context: android.content.Context, tree: Uri) = viewModelScope.launch {
+        runCatching {
+            AutoBackup.persistPermission(context, tree)
+            c.settings.setAutoBackupUri(tree.toString())
+            AutoBackup.runNow(context, c, tree)
+        }.onSuccess { _messages.emit("Respaldo automático activado") }
+            .onFailure { _messages.emit("No se pudo usar esa carpeta: ${it.message}") }
+    }
+
+    fun backupNow(context: android.content.Context) = viewModelScope.launch {
+        val uri = c.settings.current().autoBackupUri ?: return@launch
+        runCatching { AutoBackup.runNow(context, c, Uri.parse(uri)) }
+            .onSuccess { _messages.emit("Respaldo guardado ($it movimientos)") }
+            .onFailure { _messages.emit("Error al respaldar: ${it.message}") }
+    }
+
+    fun disableAutoBackup() = io { c.settings.setAutoBackupUri(null) }
 
     fun refreshRates() = viewModelScope.launch {
         runCatching { RatesFetcher.fetch(c.settings.current().rates) }

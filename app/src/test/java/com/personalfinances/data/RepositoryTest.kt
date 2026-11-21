@@ -9,6 +9,7 @@ import com.personalfinances.data.db.SystemCategory
 import com.personalfinances.data.db.TxType
 import com.personalfinances.data.db.toPeriod
 import com.personalfinances.data.db.toYearMonth
+import com.personalfinances.domain.Frequency
 import com.personalfinances.data.prefs.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -111,5 +112,24 @@ class RepositoryTest {
         assertEquals(1_300.0, total.toDouble(), 3.0)
         assertEquals(setOf(cat.id), interest.map { it.categoryId }.toSet())
         assertEquals(today.minusDays(1).toEpochDay(), db.accounts().get(acc)!!.lastAccrualEpochDay)
+    }
+
+    @Test fun repeatCreatesRecurringAndProcessingHandlesAutoAndConfirm() = runBlocking {
+        val acc = repo.saveAccount(AccountEntity(name = "Corriente", type = AccountType.CHECKING))
+        val start = today.minusMonths(2)
+        repo.save(TransactionDraft(type = TxType.EXPENSE, accountId = acc, amount = 450_000, date = start, description = "Arriendo", repeat = Frequency.MONTHLY))
+        repo.save(TransactionDraft(type = TxType.INCOME, accountId = acc, amount = 1_500_000, date = start, description = "Sueldo", repeat = Frequency.MONTHLY))
+        val all = db.recurring().getAll()
+        assertEquals(2, all.size)
+        // El sueldo se registra solo; el arriendo pide confirmación.
+        db.recurring().upsert(all.first { it.description == "Sueldo" }.copy(autoCreate = true))
+
+        val created = repo.processRecurring(today)
+        assertEquals(2, created.size) // arriendo: 2 meses atrasados → 2 pendientes
+        assertEquals(setOf("Arriendo"), created.map { it.merchant }.toSet())
+        assertEquals(3, db.transactions().getAll().count { it.description == "Sueldo" }) // original + 2 automáticos
+        db.recurring().getAll().forEach { assertEquals(true, it.nextEpochDay > today.toEpochDay()) }
+        // Volver a procesar no duplica.
+        assertEquals(0, repo.processRecurring(today).size)
     }
 }

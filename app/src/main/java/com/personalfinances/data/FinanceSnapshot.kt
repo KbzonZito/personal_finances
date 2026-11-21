@@ -4,6 +4,7 @@ import com.personalfinances.data.db.AccountEntity
 import com.personalfinances.data.db.CategoryEntity
 import com.personalfinances.data.db.DetectionEntity
 import com.personalfinances.data.db.InstallmentEntity
+import com.personalfinances.data.db.RecurringEntity
 import com.personalfinances.data.db.TransactionEntity
 import com.personalfinances.data.db.TxType
 import com.personalfinances.data.db.toYearMonth
@@ -53,6 +54,7 @@ data class FinanceSnapshot(
     val monthExpense: Long = 0,
     val monthIncome: Long = 0,
     val expenseByCategory: List<Pair<CategoryEntity?, Long>> = emptyList(),
+    val recurring: List<RecurringEntity> = emptyList(),
     val loaded: Boolean = false,
 ) {
     val activeAccounts get() = accounts.filter { !it.account.archived }
@@ -86,6 +88,7 @@ data class FinanceSnapshot(
             txs: List<TransactionEntity>,
             installments: List<InstallmentEntity>,
             pending: List<DetectionEntity>,
+            recurring: List<RecurringEntity> = emptyList(),
             today: LocalDate = LocalDate.now(),
         ): FinanceSnapshot {
             val accById = accounts.associateBy { it.id }
@@ -135,6 +138,7 @@ data class FinanceSnapshot(
                 monthExpense = expenses.sumOf(::inMain),
                 monthIncome = incomes.sumOf(::inMain),
                 expenseByCategory = byCat,
+                recurring = recurring,
                 loaded = true,
             )
         }

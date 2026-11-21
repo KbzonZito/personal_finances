@@ -24,7 +24,7 @@ Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo bá
 ## Fase 1 — Tarjetas de crédito (lo que diferencia la app)
 
 - [ ] **Facturación dual CLP/USD** (M). Muy común en Chile: las compras internacionales van en un estado de cuenta separado en dólares, con su propio cupo. Cada tarjeta tendría un cupo nacional y uno internacional.
-- [ ] **Recordatorios** (S): avisar 3 días antes del vencimiento y el día del cierre ("cierra hoy, lo que compres desde mañana va al próximo mes").
+- [x] **Recordatorios** (S): avisar 3 días antes del vencimiento y el día del cierre ("cierra hoy, lo que compres desde mañana va al próximo mes").
 - [ ] **Prepago de cuotas** (S): pagar por adelantado el saldo pendiente de una compra.
 - [ ] **Pago mínimo y deuda rotativa** (M): si pagas menos del total, estimar el interés del saldo que queda con la tasa rotativa de la tarjeta.
 - [ ] **Comisión de mantención y cargos fijos** (S), cobrados automáticamente cada periodo.
@@ -35,7 +35,7 @@ Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo bá
 
 ## Fase 2 — Registrar más rápido
 
-- [ ] **Movimientos recurrentes** (M): sueldo, arriendo, suscripciones, cuentas básicas. Se crean como pendientes o automáticos, con recordatorio.
+- [x] **Movimientos recurrentes** (M): sueldo, arriendo, suscripciones, cuentas básicas. Se crean como pendientes o automáticos, con recordatorio.
 - [ ] **Favoritos en la hoja rápida** (S): "☕ Café $3.500" con un toque; sugeridos según lo más frecuente.
 - [ ] **"Enséñale" al lector** (M): desde una notificación que no se reconoció, marcar cuál es el monto y cuál el comercio, y guardarlo como regla para esa app.
 - [ ] **Registro automático opcional para comercios de confianza** (S), con aviso y "Deshacer".
@@ -56,7 +56,7 @@ Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo bá
 
 ## Fase 4 — Más tipos de cuentas para Chile
 
-- [ ] **UF automática** (S): actualizar USD/EUR/UF una vez al día con WorkManager en vez de solo con el botón.
+- [x] **UF automática** (S): actualizar USD/EUR/UF una vez al día con WorkManager en vez de solo con el botón.
 - [ ] **Créditos de consumo e hipotecarios** (M): tabla de pagos, dividendo en UF, cuotas pendientes y cuánto falta.
 - [ ] **Historial de tasas** de cuentas remuneradas (S): cuando Tenpo cambia la tasa, que los cálculos pasados no cambien.
 - [ ] **Inversiones** (L): fondos mutuos, APV, acciones o cripto con valor manual; investigar la API pública de Fintual.
@@ -64,7 +64,7 @@ Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo bá
 ## Fase 5 — Datos y migración
 
 - [ ] **Importar desde Bluecoins** (M): exportar a CSV desde Bluecoins y asignar cuentas y categorías. Así puedes migrar sin partir de cero.
-- [ ] **Respaldo automático programado** (S): guardar el JSON cada semana en una carpeta elegida (por ejemplo, una carpeta de Google Drive vía SAF), sin necesitar la API de Drive.
+- [x] **Respaldo automático programado** (S): guardar el JSON cada semana en una carpeta elegida (por ejemplo, una carpeta de Google Drive vía SAF), sin necesitar la API de Drive.
 - [ ] Exportar a CSV o Excel (S).
 - [ ] Cifrar la base con SQLCipher (M): a cambio, el APK pesa ~3 MB más y la app es un poco más lenta.
 - [ ] Sincronizar entre dispositivos (L, solo si llega a hacer falta).
@@ -83,7 +83,7 @@ Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo bá
 **Animaciones y UX**
 - [ ] **Shared element transitions** (M): la tarjeta de la cuenta se expande hasta la pantalla de detalle.
 - [ ] **Predictive back** (S), Android 14+.
-- [ ] **Onboarding de 3 pasos** (S): moneda → primera cuenta → detección por notificaciones.
+- [x] **Onboarding de 3 pasos** (S): moneda → primera cuenta → detección por notificaciones.
 - [ ] Haptics más variados, y confetti discreto al pagar una tarjeta completa 🎉 (S).
 
 **Calidad del código**

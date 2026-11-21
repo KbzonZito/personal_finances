@@ -12,11 +12,14 @@ import androidx.room.TypeConverters
 @Database(
     entities = [
         AccountEntity::class, TransactionEntity::class, InstallmentEntity::class, CategoryEntity::class,
-        DetectionEntity::class, SourceRuleEntity::class, MerchantRuleEntity::class,
+        DetectionEntity::class, SourceRuleEntity::class, MerchantRuleEntity::class, RecurringEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2, spec = Migrations.From1To2::class)],
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2, spec = Migrations.From1To2::class),
+        AutoMigration(from = 2, to = 3),
+    ],
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -26,6 +29,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun categories(): CategoryDao
     abstract fun detections(): DetectionDao
     abstract fun rules(): RuleDao
+    abstract fun recurring(): RecurringDao
     abstract fun maintenance(): MaintenanceDao
 
     companion object {

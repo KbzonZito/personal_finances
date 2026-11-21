@@ -34,4 +34,14 @@ class MigrationTest {
         }
         db.query("SELECT COUNT(*) FROM installments").use { it.moveToFirst(); assertEquals(3, it.getInt(0)) }
     }
+
+    @Test fun migrate2To3_addsRecurringTable() {
+        helper.createDatabase("m23.db", 2).apply {
+            execSQL("INSERT INTO detections (id, packageName, appLabel, title, text, amount, currencyCode, merchant, isIncome, lastDigits, postedAt, status) VALUES (1, 'cl.bank', 'Banco', '', '', 5000, 'CLP', NULL, 0, NULL, 0, 'PENDING')")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate("m23.db", 3, true)
+        db.query("SELECT recurringId FROM detections WHERE id = 1").use { it.moveToFirst(); assertEquals(true, it.isNull(0)) }
+        db.query("SELECT COUNT(*) FROM recurring").use { it.moveToFirst(); assertEquals(0, it.getInt(0)) }
+    }
 }

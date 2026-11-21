@@ -10,6 +10,9 @@ import com.personalfinances.data.db.DetectionStatus
 import com.personalfinances.data.db.InstallmentEntity
 import com.personalfinances.data.db.MerchantRuleEntity
 import com.personalfinances.data.db.SourceRuleEntity
+import com.personalfinances.data.db.RecurringEntity
+import com.personalfinances.domain.Frequency
+import com.personalfinances.domain.Recurrence
 import com.personalfinances.data.db.SystemCategory
 import com.personalfinances.data.db.toYearMonth
 import androidx.room.withTransaction
@@ -49,6 +52,8 @@ data class TransactionDraft(
     val deferMonths: Int = 0,
     val source: TxSource = TxSource.MANUAL,
     val detectionId: Long? = null,
+    /** Si no es null, además crea un movimiento recurrente desde la próxima ocurrencia. */
+    val repeat: Frequency? = null,
 )
 
 class FinanceRepository(
@@ -73,8 +78,8 @@ class FinanceRepository(
 
     /** Estado completo de la app, calculado una sola vez y compartido por todas las pantallas. */
     val snapshot: StateFlow<FinanceSnapshot> = combine(
-        raw, settingsStore.settings, db.detections().observePending(),
-    ) { r, s, p -> FinanceSnapshot.build(s, r.accounts, r.categories, r.txs, r.installments, p) }
+        raw, settingsStore.settings, db.detections().observePending(), db.recurring().observeAll(),
+    ) { r, s, p, rec -> FinanceSnapshot.build(s, r.accounts, r.categories, r.txs, r.installments, p, rec) }
         .flowOn(Dispatchers.Default)
         .stateIn(scope, SharingStarted.Eagerly, FinanceSnapshot())
 
@@ -105,6 +110,7 @@ class FinanceRepository(
             db.transactions().convertOutgoingTransfers(account.id, label)
             db.transactions().deleteOwned(account.id)
             db.rules().deleteSourceRulesFor(account.id)
+            db.recurring().deleteForAccount(account.id)
             db.accounts().delete(account)
         }
         onDataChanged()
@@ -166,6 +172,16 @@ class FinanceRepository(
             })
         }
 
+        if (d.repeat != null && d.id == 0L && d.type != TxType.ADJUSTMENT) {
+            db.recurring().upsert(
+                RecurringEntity(
+                    type = d.type, accountId = d.accountId, toAccountId = d.toAccountId, amount = d.amount,
+                    description = d.description.trim(), categoryId = d.categoryId, frequency = d.repeat,
+                    dayOfMonth = d.date.dayOfMonth, nextEpochDay = Recurrence.next(d.date, d.repeat, d.date.dayOfMonth).toEpochDay(),
+                )
+            )
+        }
+
         // Aprendizaje: comercio → categoría.
         if (d.categoryId != null && d.description.isNotBlank()) {
             db.rules().putMerchantRule(MerchantRuleEntity(merchantKey(d.description), d.categoryId))
@@ -211,6 +227,49 @@ class FinanceRepository(
         val rules = db.rules().sourceRules().filter { it.packageName == packageName }
         val rule = rules.firstOrNull { it.lastDigits == lastDigits.orEmpty() } ?: rules.firstOrNull()
         return rule?.accountId?.takeIf { id -> accounts.any { it.id == id } }
+    }
+
+    // ---------- Recurrentes ----------
+
+    suspend fun recurring(id: Long) = db.recurring().get(id)
+    suspend fun saveRecurring(r: RecurringEntity) { db.recurring().upsert(r) }
+    suspend fun deleteRecurring(id: Long) { db.recurring().delete(id) }
+
+    /**
+     * Procesa los recurrentes vencidos: los automáticos se registran; el resto queda en la bandeja
+     * de pendientes. Devuelve los pendientes creados (para notificar).
+     */
+    suspend fun processRecurring(today: LocalDate = LocalDate.now()): List<DetectionEntity> {
+        val created = mutableListOf<DetectionEntity>()
+        val accounts = db.accounts().getAll().associateBy { it.id }
+        for (r in db.recurring().due(today.toEpochDay())) {
+            val account = accounts[r.accountId]
+            if (account == null || account.archived) continue
+            val dates = Recurrence.pending(LocalDate.ofEpochDay(r.nextEpochDay), today, r.frequency, r.dayOfMonth)
+            for (date in dates) {
+                if (r.autoCreate) {
+                    save(
+                        TransactionDraft(
+                            type = r.type, accountId = r.accountId, toAccountId = r.toAccountId, amount = r.amount,
+                            date = date, description = r.description, categoryId = r.categoryId, source = TxSource.AUTO,
+                        )
+                    )
+                } else {
+                    val d = DetectionEntity(
+                        packageName = "recurring", appLabel = "Programado", title = r.description,
+                        text = "${r.frequency.label} · ${account.name}", amount = r.amount, currencyCode = account.currencyCode,
+                        merchant = r.description.ifBlank { null }, isIncome = r.type == TxType.INCOME, lastDigits = null,
+                        postedAt = date.atTime(9, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                        recurringId = r.id,
+                    )
+                    created += d.copy(id = db.detections().insert(d))
+                }
+            }
+            val next = dates.lastOrNull()?.let { Recurrence.next(it, r.frequency, r.dayOfMonth) } ?: continue
+            db.recurring().upsert(r.copy(nextEpochDay = next.toEpochDay()))
+        }
+        if (created.isNotEmpty()) onDataChanged()
+        return created
     }
 
     // ---------- Rentabilidad diaria ----------

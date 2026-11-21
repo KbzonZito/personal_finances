@@ -137,6 +137,29 @@ interface RuleDao {
 }
 
 @Dao
+interface RecurringDao {
+    @Query("SELECT * FROM recurring ORDER BY active DESC, nextEpochDay")
+    fun observeAll(): Flow<List<RecurringEntity>>
+
+    @Query("SELECT * FROM recurring")
+    suspend fun getAll(): List<RecurringEntity>
+
+    @Query("SELECT * FROM recurring WHERE id = :id")
+    suspend fun get(id: Long): RecurringEntity?
+
+    @Query("SELECT * FROM recurring WHERE active = 1 AND nextEpochDay <= :day")
+    suspend fun due(day: Long): List<RecurringEntity>
+
+    @Upsert suspend fun upsert(r: RecurringEntity): Long
+
+    @Query("DELETE FROM recurring WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    @Query("DELETE FROM recurring WHERE accountId = :accountId OR toAccountId = :accountId")
+    suspend fun deleteForAccount(accountId: Long)
+}
+
+@Dao
 interface MaintenanceDao {
     @Query("DELETE FROM accounts") suspend fun clearAccounts()
     @Query("DELETE FROM transactions") suspend fun clearTransactions()
@@ -145,6 +168,7 @@ interface MaintenanceDao {
     @Query("DELETE FROM detections") suspend fun clearDetections()
     @Query("DELETE FROM source_rules") suspend fun clearSourceRules()
     @Query("DELETE FROM merchant_rules") suspend fun clearMerchantRules()
+    @Query("DELETE FROM recurring") suspend fun clearRecurring()
 
     @Insert suspend fun insertAccounts(v: List<AccountEntity>)
     @Insert suspend fun insertTransactions(v: List<TransactionEntity>)
@@ -153,6 +177,7 @@ interface MaintenanceDao {
     @Insert suspend fun insertDetections(v: List<DetectionEntity>)
     @Insert suspend fun insertSourceRules(v: List<SourceRuleEntity>)
     @Insert suspend fun insertMerchantRules(v: List<MerchantRuleEntity>)
+    @Insert suspend fun insertRecurring(v: List<RecurringEntity>)
 
     @Transaction
     suspend fun replaceAll(
@@ -163,9 +188,11 @@ interface MaintenanceDao {
         detections: List<DetectionEntity>,
         sourceRules: List<SourceRuleEntity>,
         merchantRules: List<MerchantRuleEntity>,
+        recurring: List<RecurringEntity>,
     ) {
         clearInstallments(); clearTransactions(); clearAccounts(); clearCategories()
-        clearDetections(); clearSourceRules(); clearMerchantRules()
+        clearDetections(); clearSourceRules(); clearMerchantRules(); clearRecurring()
+        insertRecurring(recurring)
         insertAccounts(accounts); insertCategories(categories); insertTransactions(transactions)
         insertInstallments(installments); insertDetections(detections)
         insertSourceRules(sourceRules); insertMerchantRules(merchantRules)

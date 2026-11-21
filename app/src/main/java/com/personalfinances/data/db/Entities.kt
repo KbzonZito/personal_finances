@@ -7,6 +7,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.personalfinances.domain.CardCycle
 import com.personalfinances.domain.Currency
+import com.personalfinances.domain.Frequency
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -142,6 +143,8 @@ data class DetectionEntity(
     val lastDigits: String?,
     val postedAt: Long,
     val status: DetectionStatus = DetectionStatus.PENDING,
+    /** Si viene de un movimiento recurrente por confirmar (no de una notificación). */
+    val recurringId: Long? = null,
 ) {
     val currency: Currency get() = Currency.fromCode(currencyCode)
 }
@@ -162,4 +165,25 @@ data class SourceRuleEntity(
 data class MerchantRuleEntity(
     @PrimaryKey val merchantKey: String,
     val categoryId: Long,
+)
+
+/** Plantilla de un movimiento que se repite (sueldo, arriendo, suscripciones…). */
+@Serializable
+@Entity(tableName = "recurring")
+data class RecurringEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val type: TxType,
+    val accountId: Long,
+    val toAccountId: Long? = null,
+    val amount: Long,
+    val description: String = "",
+    val categoryId: Long? = null,
+    val frequency: Frequency = Frequency.MONTHLY,
+    /** Día del mes (1–31, se ajusta en meses cortos) para MONTHLY/YEARLY. */
+    val dayOfMonth: Int = 1,
+    /** Próxima fecha en que corresponde (epochDay). */
+    val nextEpochDay: Long,
+    /** true: se registra solo. false: queda pendiente y te pide confirmar. */
+    val autoCreate: Boolean = false,
+    val active: Boolean = true,
 )

@@ -75,6 +75,9 @@ import com.personalfinances.ui.screens.CategoriesScreen
 import com.personalfinances.ui.screens.HomeScreen
 import com.personalfinances.ui.screens.NotificationSetupScreen
 import com.personalfinances.ui.screens.PendingScreen
+import com.personalfinances.ui.screens.RecurringScreen
+import com.personalfinances.ui.screens.OnboardingScreen
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.personalfinances.ui.screens.SettingsScreen
 import com.personalfinances.ui.screens.TransactionsScreen
 import com.personalfinances.ui.theme.FinanceTheme
@@ -165,6 +168,7 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
                     onOpenTransactions = { nav.navigateTab("transactions") },
                     onOpenTransaction = openTx,
                     onPayCard = { st -> openAdd(AddRequest(type = TxType.TRANSFER, toAccountId = st.account.id, amount = st.card?.billedDue)) },
+                    onOpenRecurring = { nav.navigate("recurring") },
                     contentPadding = pad,
                 )
             }
@@ -173,7 +177,7 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
                 CardsScreen(snapshot, onOpenCard = { nav.navigate("card/${it.account.id}") }, onNewCard = { nav.navigate("accountEdit?type=CREDIT_CARD") }, contentPadding = pad)
             }
             composable("settings") {
-                SettingsScreen(snapshot, vm, onOpenNotifications = { nav.navigate("notifications") }, onOpenCategories = { nav.navigate("categories") }, contentPadding = pad)
+                SettingsScreen(snapshot, vm, onOpenNotifications = { nav.navigate("notifications") }, onOpenCategories = { nav.navigate("categories") }, onOpenRecurring = { nav.navigate("recurring") }, contentPadding = pad)
             }
             composable("card/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 val id = e.arguments!!.getLong("id")
@@ -220,7 +224,21 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
             }
             composable("notifications") { NotificationSetupScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
             composable("categories") { CategoriesScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
+            composable("recurring") { RecurringScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
         }
+    }
+
+    // Onboarding: solo la primera vez y si no hay cuentas (quien ya usaba la app no lo ve).
+    var onboarding by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(snapshot.loaded, snapshot.settings.onboardingDone) {
+        if (!snapshot.loaded) return@LaunchedEffect
+        when {
+            snapshot.settings.onboardingDone -> onboarding = false
+            onboarding == null -> if (snapshot.accounts.isEmpty()) onboarding = true else { vm.finishOnboarding(); onboarding = false }
+        }
+    }
+    AnimatedVisibility(onboarding == true, enter = fadeIn(), exit = fadeOut() + slideOutVertically { -it / 8 }) {
+        OnboardingScreen(snapshot, vm, onSetupNotifications = { nav.navigate("notifications") })
     }
 
     addRequest?.let { req ->

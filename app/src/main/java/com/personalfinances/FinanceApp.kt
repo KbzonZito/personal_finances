@@ -8,7 +8,7 @@ import com.personalfinances.data.db.AppDatabase
 import com.personalfinances.data.prefs.SettingsStore
 import com.personalfinances.notifications.DetectionNotifier
 import com.personalfinances.widget.QuickAddWidget
-import com.personalfinances.work.YieldWorker
+import com.personalfinances.work.DailyWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -30,10 +30,10 @@ class FinanceApp : Application() {
         super.onCreate()
         container = AppContainer(this)
         DetectionNotifier.createChannel(this)
-        runCatching { YieldWorker.schedule(this) }
+        runCatching { DailyWorker.schedule(this) }
         container.scope.launch {
             container.repository.ensureSeeded()
-            container.repository.accrueYield()
+            DailyWorker.runDaily(this@FinanceApp, container)
         }
     }
 }

@@ -36,6 +36,9 @@ import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Screenshot
 import androidx.compose.material.icons.outlined.Category
@@ -105,9 +108,12 @@ fun SettingsScreen(
     vm: MainViewModel,
     onOpenNotifications: () -> Unit,
     onOpenCategories: () -> Unit,
+    onOpenRecurring: () -> Unit,
     contentPadding: PaddingValues,
 ) {
     val s = snapshot.settings
+    val context = LocalContext.current
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> uri?.let { vm.enableAutoBackup(context, it) } }
     var showRates by remember { mutableStateOf(false) }
     var showCurrency by remember { mutableStateOf(false) }
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::exportBackup) }
@@ -153,6 +159,11 @@ fun SettingsScreen(
             SettingRow(Icons.Outlined.CurrencyExchange, "Tasas de cambio",
                 "1 USD = ${Money.format(Currency.CLP.fromMajorDouble(s.rates.rate(Currency.USD)), Currency.CLP)} · 1 UF = ${Money.format(Currency.CLP.fromMajorDouble(s.rates.rate(Currency.UF)), Currency.CLP)}") { showRates = true }
         }
+        item {
+            val n = snapshot.recurring.count { it.active }
+            SettingRow(Icons.Outlined.Repeat, "Movimientos recurrentes", if (n == 0) "Sueldo, arriendo, suscripciones…" else "$n activos", onClick = onOpenRecurring)
+        }
+        item { SwitchSetting(Icons.Outlined.Alarm, "Recordatorios de tarjetas", "3 días antes del vencimiento y el día de cierre", s.remindersEnabled, vm::setRemindersEnabled) }
         item { SettingRow(Icons.Outlined.Category, "Categorías", "${snapshot.categories.size} categorías", onClick = onOpenCategories) }
         item { SwitchSetting(Icons.Outlined.VisibilityOff, "Ocultar montos", "Útil en lugares públicos", s.hideAmounts, vm::setHideAmounts) }
 
@@ -173,6 +184,23 @@ fun SettingsScreen(
         if (Build.VERSION.SDK_INT >= 31) item { SwitchSetting(Icons.Outlined.Palette, "Colores del fondo de pantalla", "Material You", s.dynamicColor, vm::setDynamic) }
 
         item { Group("Respaldo") }
+        item {
+            val uri = s.autoBackupUri
+            if (uri == null) {
+                SettingRow(Icons.Outlined.Backup, "Respaldo automático semanal", "Elige una carpeta (por ej. Documentos)") { folderPicker.launch(null) }
+            } else {
+                val folder = remember(uri) { com.personalfinances.data.backup.AutoBackup.folderName(context, android.net.Uri.parse(uri)) }
+                val last = if (s.lastAutoBackup > 0) DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(s.lastAutoBackup)) else "nunca"
+                Column {
+                    SettingRow(Icons.Outlined.Backup, "Respaldo automático semanal", "En \"$folder\" · último: $last") { vm.backupNow(context) }
+                    Row(Modifier.padding(start = 60.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { vm.backupNow(context) }) { Text("Respaldar ahora") }
+                        TextButton(onClick = { folderPicker.launch(null) }) { Text("Cambiar carpeta") }
+                        TextButton(onClick = vm::disableAutoBackup) { Text("Desactivar") }
+                    }
+                }
+            }
+        }
         item { SettingRow(Icons.Outlined.CloudUpload, "Exportar respaldo", "Guarda un archivo .json (puedes elegir Google Drive)") { exporter.launch("finanzas-${java.time.LocalDate.now()}.json") } }
         item { SettingRow(Icons.Outlined.CloudDownload, "Restaurar respaldo", "Reemplaza todos los datos actuales") { confirmImport = true } }
 
@@ -192,7 +220,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showCurrency = false },
             title = { Text("Moneda principal") },
-            text = { Column { Text("Se usa para el patrimonio total y los resúmenes.", style = MaterialTheme.typography.bodySmall); Spacer(Modifier.height(12.dp)); CurrencyDropdown(s.mainCurrency, Modifier.padding(0.dp)) { vm.setMainCurrency(it); showCurrency = false } } },
+            text = { Column { Text("Se usa para el patrimonio total y los resúmenes.", style = MaterialTheme.typography.bodySmall); Spacer(Modifier.height(12.dp)); CurrencyDropdown(s.mainCurrency, Modifier.fillMaxWidth()) { vm.setMainCurrency(it); showCurrency = false } } },
             confirmButton = { TextButton(onClick = { showCurrency = false }) { Text("Cerrar") } },
         )
     }

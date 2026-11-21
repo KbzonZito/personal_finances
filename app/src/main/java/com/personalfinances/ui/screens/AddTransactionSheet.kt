@@ -42,6 +42,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
@@ -94,6 +95,7 @@ import com.personalfinances.data.db.DetectionEntity
 import com.personalfinances.data.db.TxSource
 import com.personalfinances.data.db.TxType
 import com.personalfinances.domain.Currency
+import com.personalfinances.domain.Frequency
 import com.personalfinances.domain.InstallmentPlanner
 import com.personalfinances.domain.InterestSpec
 import com.personalfinances.domain.Money
@@ -169,6 +171,7 @@ fun AddTransactionContent(
     var detection by remember { mutableStateOf<DetectionEntity?>(null) }
     var initialized by rememberSaveable { mutableStateOf(false) }
     var categoryTouched by rememberSaveable { mutableStateOf(false) }
+    var repeat by rememberSaveable { mutableStateOf<Frequency?>(null) }
 
     val account = accounts.firstOrNull { it.id == accountId }
     val currency = account?.currency ?: snapshot.settings.mainCurrency
@@ -202,6 +205,19 @@ fun AddTransactionContent(
             return@LaunchedEffect
         }
         val det = request.detectionId?.let { repo.detection(it) }
+        val template = det?.recurringId?.let { repo.recurring(it) }
+        if (det != null && template != null) {
+            detection = det
+            type = template.type
+            accountId = template.accountId
+            toAccountId = template.toAccountId
+            categoryId = template.categoryId
+            categoryTouched = true
+            description = template.description
+            epochDay = Instant.ofEpochMilli(det.postedAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay()
+            amountText = minorToKeypad(template.amount, accounts.firstOrNull { it.id == template.accountId }?.currency ?: det.currency)
+            return@LaunchedEffect
+        }
         if (det != null) {
             detection = det
             type = if (det.isIncome) TxType.INCOME else TxType.EXPENSE
@@ -262,8 +278,13 @@ fun AddTransactionContent(
                 installmentsPaid = if (isCardExpense) paidInstallments else 0,
                 interest = interestSpec,
                 deferMonths = if (isCardExpense) deferMonths else 0,
-                source = if (detection != null) TxSource.NOTIFICATION else TxSource.MANUAL,
+                source = when {
+                    detection?.recurringId != null -> TxSource.AUTO
+                    detection != null -> TxSource.NOTIFICATION
+                    else -> TxSource.MANUAL
+                },
                 detectionId = detection?.id,
+                repeat = repeat,
             )
         )
     }
@@ -295,7 +316,7 @@ fun AddTransactionContent(
                         Icon(Icons.Outlined.NotificationsActive, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                         Spacer(Modifier.width(10.dp))
                         Column {
-                            Text("Detectado en ${det.appLabel}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(if (det.recurringId != null) "Movimiento programado" else "Detectado en ${det.appLabel}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             Text(det.text.ifBlank { det.title }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer, maxLines = 2)
                         }
                     }
@@ -456,6 +477,18 @@ fun AddTransactionContent(
                         leadingIcon = { Icon(Icons.Outlined.CalendarToday, null, Modifier.size(16.dp)) },
                         label = { Text(if (custom) LocalDate.ofEpochDay(epochDay).format(DateTimeFormatter.ofPattern("d MMM yyyy", esCL)) else "Otra fecha") },
                     )
+                }
+            }
+            if (request.transactionId == null && detection == null) {
+                LazyRow(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item { FilterChip(selected = repeat == null, onClick = { repeat = null }, label = { Text("No se repite") }) }
+                    items(Frequency.entries) { f ->
+                        FilterChip(
+                            selected = repeat == f, onClick = { repeat = f },
+                            leadingIcon = if (repeat == f) { { Icon(Icons.Outlined.Repeat, null, Modifier.size(16.dp)) } } else null,
+                            label = { Text(f.every.replaceFirstChar { it.uppercase() }) },
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(12.dp))

@@ -248,9 +248,9 @@ private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CurrencyDropdown(selected: Currency, modifier: Modifier = Modifier, onSelect: (Currency) -> Unit) {
+fun CurrencyDropdown(selected: Currency, modifier: Modifier = Modifier.padding(horizontal = 20.dp), onSelect: (Currency) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded, { expanded = it }, modifier.padding(horizontal = 20.dp)) {
+    ExposedDropdownMenuBox(expanded, { expanded = it }, modifier) {
         OutlinedTextField(
             value = "${selected.flag}  ${selected.code} — ${selected.displayName}", onValueChange = {}, readOnly = true,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
