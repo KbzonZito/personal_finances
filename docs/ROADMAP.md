@@ -23,7 +23,7 @@ Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo bá
 
 ## Fase 1 — Tarjetas de crédito (lo que diferencia la app)
 
-- [ ] **Facturación dual CLP/USD** (M). Muy común en Chile: las compras internacionales van en un estado de cuenta separado en dólares, con su propio cupo. Cada tarjeta tendría un cupo nacional y uno internacional.
+- [x] ~~**Facturación dual CLP/USD**~~ — no aplica: tu banco convierte a CLP. En su lugar: compras en otra moneda con conversión y monto cobrado opcional (v0.4). Muy común en Chile: las compras internacionales van en un estado de cuenta separado en dólares, con su propio cupo. Cada tarjeta tendría un cupo nacional y uno internacional.
 - [x] **Recordatorios** (S): avisar 3 días antes del vencimiento y el día del cierre ("cierra hoy, lo que compres desde mañana va al próximo mes").
 - [ ] **Prepago de cuotas** (S): pagar por adelantado el saldo pendiente de una compra.
 - [ ] **Pago mínimo y deuda rotativa** (M): si pagas menos del total, estimar el interés del saldo que queda con la tasa rotativa de la tarjeta.
@@ -32,6 +32,15 @@ Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo bá
 - [ ] **Simulador** (S): "si compro $X en N cuotas, ¿cómo quedan mi cupo y mis próximos meses?" antes de comprar.
 - [ ] **Avance en efectivo / súper avance en cuotas** (S): ya funciona como transferencia desde la tarjeta; falta permitir cuotas e interés.
 - [ ] Importar el estado de cuenta en PDF, leído en el teléfono (L, más adelante).
+
+## Carga de datos pasados (v0.4) ✓
+
+- [x] Saldo "de hoy" al crear una cuenta: los movimientos con fecha anterior quedan como historial y no lo cambian.
+- [x] Corregir el saldo actual en el editor recalcula desde ahí (re-ancla).
+- [x] Tarjetas: "último estado de cuenta pagado" para cargar compras antiguas con su fecha real.
+- [x] Recurrentes con fecha pasada no generan pendientes atrasados.
+- [x] Editar un movimiento conserva su fecha de creación.
+- [x] "Guardar y otro" para cargar muchos movimientos seguidos.
 
 ## Fase 2 — Registrar más rápido
 
@@ -46,7 +55,7 @@ Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo bá
 
 ## Fase 3 — Entender en qué se va la plata
 
-- [ ] **Proyección de saldo** (M) ⭐: saldo futuro de tus cuentas sumando sueldo y recurrentes y restando las cuotas que vienen. Responde "¿me alcanza a fin de mes?" y "¿cuándo quedo libre de cuotas?".
+- [x] **Proyección de saldo** (M) ⭐: saldo futuro de tus cuentas sumando sueldo y recurrentes y restando las cuotas que vienen. Responde "¿me alcanza a fin de mes?" y "¿cuándo quedo libre de cuotas?".
 - [ ] **Presupuestos por categoría** (M), con barra de avance y aviso al llegar al 80% y al 100%.
 - [ ] **Reportes** (M): tendencia mensual, comparación con el mes anterior, gasto diario promedio, estimación de cierre de mes, top comercios.
 - [ ] **Evolución del patrimonio** (S): guardar el total cada día y graficarlo.

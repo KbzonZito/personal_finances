@@ -145,6 +145,8 @@ fun AddTransactionContent(
     onDismissDetection: (Long) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Si se entrega, aparece "Guardar y otro": guarda y deja la hoja abierta (útil para cargar historial). */
+    onSaveAndContinue: ((TransactionDraft) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val repo = context.container.repository
@@ -172,9 +174,16 @@ fun AddTransactionContent(
     var initialized by rememberSaveable { mutableStateOf(false) }
     var categoryTouched by rememberSaveable { mutableStateOf(false) }
     var repeat by rememberSaveable { mutableStateOf<Frequency?>(null) }
+    /** Moneda en que se ingresa el monto, si es distinta a la de la cuenta (ej. compra en US$). */
+    var entryCurrency by rememberSaveable { mutableStateOf<Currency?>(null) }
+    var chargedText by rememberSaveable { mutableStateOf("") }
+    var savedCount by rememberSaveable { mutableIntStateOf(0) }
+    var currencyMenu by remember { mutableStateOf(false) }
 
     val account = accounts.firstOrNull { it.id == accountId }
     val currency = account?.currency ?: snapshot.settings.mainCurrency
+    val foreign = entryCurrency?.takeIf { it != currency && type != TxType.TRANSFER }
+    val inputCurrency = foreign ?: currency
     val toAccount = accounts.firstOrNull { it.id == toAccountId }
 
     // Carga inicial: edición, detección o valores por defecto.
@@ -189,6 +198,12 @@ fun AddTransactionContent(
             val c = accounts.firstOrNull { it.id == tx.accountId }?.currency ?: Currency.CLP
             amountText = minorToKeypad(tx.amount, c)
             tx.toAmount?.let { ta -> toAmountText = minorToKeypad(ta, accounts.firstOrNull { it.id == tx.toAccountId }?.currency ?: c) }
+            tx.originalCurrency?.let { oc ->
+                val ocur = Currency.fromCode(oc)
+                entryCurrency = ocur
+                amountText = minorToKeypad(tx.originalAmount ?: 0, ocur)
+                chargedText = minorToKeypad(tx.amount, c).replace('.', ',')
+            }
             categoryId = tx.categoryId
             categoryTouched = true
             description = tx.description
@@ -226,7 +241,8 @@ fun AddTransactionContent(
             accountId = repo.suggestAccount(det.packageName, det.lastDigits)
                 ?: accounts.firstOrNull { it.currencyCode == det.currencyCode }?.id ?: accounts.firstOrNull()?.id
             val c = accounts.firstOrNull { it.id == accountId }?.currency ?: det.currency
-            amountText = minorToKeypad(snapshot.settings.rates.convert(det.amount, det.currency, c), c)
+            if (c != det.currency) entryCurrency = det.currency
+            amountText = minorToKeypad(det.amount, det.currency)
             categoryId = repo.suggestCategory(description)
             return@LaunchedEffect
         }
@@ -247,7 +263,13 @@ fun AddTransactionContent(
         if (!categoryTouched && description.length >= 3) repo.suggestCategory(description)?.let { categoryId = it }
     }
 
-    val amount = keypadToMinor(amountText, currency)
+    val enteredAmount = keypadToMinor(amountText, inputCurrency)
+    val chargedOverride = if (foreign != null) Money.parse(chargedText, currency)?.takeIf { it > 0 } else null
+    val amount = when {
+        foreign == null -> enteredAmount
+        chargedOverride != null -> chargedOverride
+        else -> snapshot.settings.rates.convert(enteredAmount, foreign, currency)
+    }
     val isCardExpense = account?.type?.isCard == true && type == TxType.EXPENSE
     val crossCurrency = type == TxType.TRANSFER && toAccount != null && toAccount.currency != currency
     val interestSpec: InterestSpec = if (!isCardExpense || installments <= 1) InterestSpec.None else when (interestMode) {
@@ -258,12 +280,11 @@ fun AddTransactionContent(
     }
     val canSave = amount > 0 && account != null && (type != TxType.TRANSFER || (toAccount != null && toAccount.id != account.id))
 
-    fun save() {
-        val acc = account ?: return
+    fun buildDraft(): TransactionDraft? {
+        val acc = account ?: return null
         val toAmount = if (crossCurrency) keypadToMinor(toAmountText.replace(',', '.'), toAccount!!.currency).takeIf { it > 0 }
             ?: snapshot.settings.rates.convert(amount, currency, toAccount.currency) else null
-        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        onSave(
+        return (
             TransactionDraft(
                 id = request.transactionId ?: 0,
                 type = type,
@@ -285,8 +306,26 @@ fun AddTransactionContent(
                 },
                 detectionId = detection?.id,
                 repeat = repeat,
+                originalAmount = if (foreign != null) enteredAmount else null,
+                originalCurrency = foreign?.code,
             )
         )
+    }
+
+    fun save() {
+        val d = buildDraft() ?: return
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        onSave(d)
+    }
+
+    fun saveAndContinue() {
+        val d = buildDraft() ?: return
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        onSaveAndContinue?.invoke(d)
+        // Conserva tipo, cuenta, fecha y moneda; limpia lo demás para el siguiente.
+        amountText = ""; chargedText = ""; description = ""; categoryId = null; categoryTouched = false
+        installments = 1; interestMode = InterestMode.NONE; interestText = ""; deferMonths = 0; paidInstallments = 0; repeat = null
+        savedCount++
     }
 
     Column(modifier.fillMaxWidth().imePadding()) {
@@ -326,13 +365,46 @@ fun AddTransactionContent(
             // Monto
             val amountScale by animateFloatAsState(if (amountText.isEmpty()) 0.92f else 1f, spring(Spring.DampingRatioMediumBouncy), label = "amt")
             Text(
-                displayKeypad(amountText, currency),
+                displayKeypad(amountText, inputCurrency),
                 style = MaterialTheme.typography.displayMedium.merge(AmountStyle).copy(fontSize = if (amountText.length > 9) 40.sp else 52.sp),
                 color = if (amountText.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp).scale(amountScale),
             )
+            if (type != TxType.TRANSFER) {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    androidx.compose.material3.AssistChip(
+                        onClick = { currencyMenu = true },
+                        label = { Text("${inputCurrency.flag} ${inputCurrency.code} ▾") },
+                    )
+                    androidx.compose.material3.DropdownMenu(currencyMenu, { currencyMenu = false }) {
+                        (listOf(currency) + Currency.entries.filter { it != currency }).forEach { c ->
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text("${c.flag}  ${c.code} — ${c.displayName}") },
+                                onClick = { entryCurrency = if (c == currency) null else c; amountText = ""; chargedText = ""; currencyMenu = false },
+                            )
+                        }
+                    }
+                }
+            }
+            AnimatedVisibility(foreign != null) {
+                Column {
+                    Text(
+                        "≈ ${Money.format(amount, currency)} en ${account?.name ?: ""}" + if (chargedOverride == null) " (1 ${(foreign ?: currency).code} = ${Money.format(currency.fromMajorDouble(snapshot.settings.rates.rate(foreign ?: currency) / snapshot.settings.rates.rate(currency)), currency)})" else "",
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    )
+                    OutlinedTextField(
+                        value = chargedText, onValueChange = { chargedText = it.filter { ch -> ch.isDigit() || ch == ',' || ch == '.' } },
+                        label = { Text("Monto cobrado en ${currency.code} (opcional)") },
+                        supportingText = { Text("Si tu banco ya te informó el monto en ${currency.code}, ponlo aquí") },
+                        prefix = { Text(currency.symbol) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp).onFocusChanged { descFocused = it.isFocused },
+                    )
+                }
+            }
             if (isCardExpense && installments > 1 && amount > 0) {
                 val plan = InstallmentPlanner.plan(amount, installments, java.time.YearMonth.now(), interestSpec)
                 val total = plan.sumOf { it.amount }
@@ -497,19 +569,34 @@ fun AddTransactionContent(
         // Teclado numérico
         AnimatedVisibility(!descFocused, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
             Keypad(
-                decimals = currency.decimals,
+                decimals = inputCurrency.decimals,
                 onKey = { key ->
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    amountText = applyKey(amountText, key, currency.decimals)
+                    amountText = applyKey(amountText, key, inputCurrency.decimals)
                 },
                 onClear = { amountText = "" },
             )
+        }
+        AnimatedVisibility(savedCount > 0) {
+            Text(
+                "✓ $savedCount ${if (savedCount == 1) "guardado" else "guardados"}",
+                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary,
+                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            )
+        }
+        val showContinue = onSaveAndContinue != null && request.transactionId == null && detection == null
+        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp).navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (showContinue) {
+            androidx.compose.material3.FilledTonalButton(
+                onClick = ::saveAndContinue, enabled = canSave, shape = MaterialTheme.shapes.large,
+                modifier = Modifier.weight(1f).height(56.dp),
+            ) { Text("Guardar y otro", style = MaterialTheme.typography.titleSmall) }
         }
         Button(
             onClick = ::save,
             enabled = canSave,
             shape = MaterialTheme.shapes.large,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp).height(56.dp).navigationBarsPadding(),
+            modifier = Modifier.weight(if (showContinue) 1.3f else 1f).height(56.dp),
         ) {
             Text(
                 when {
@@ -520,7 +607,9 @@ fun AddTransactionContent(
                     else -> "Agregar gasto"
                 },
                 style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
             )
+        }
         }
     }
 

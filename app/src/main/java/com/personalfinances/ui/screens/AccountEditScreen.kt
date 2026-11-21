@@ -62,6 +62,10 @@ import com.personalfinances.data.FinanceSnapshot
 import com.personalfinances.data.db.AccountEntity
 import com.personalfinances.data.db.AccountType
 import com.personalfinances.domain.Currency
+import com.personalfinances.domain.CardCycle
+import com.personalfinances.data.db.toPeriod
+import com.personalfinances.data.db.toYearMonth
+import com.personalfinances.ui.components.monthLong
 import com.personalfinances.domain.Money
 
 private val palette = listOf(
@@ -94,6 +98,8 @@ fun AccountEditScreen(
     var includeInTotal by rememberSaveable { mutableStateOf(true) }
     var archived by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    var loadedBalanceText by rememberSaveable { mutableStateOf("") }
+    var paidThrough by rememberSaveable { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(existing) {
         if (loaded || existing == null) return@LaunchedEffect
@@ -101,7 +107,10 @@ fun AccountEditScreen(
         name = existing.name
         type = existing.type
         currency = existing.currency
-        initial = if (existing.initialBalance != 0L) existing.currency.toMajor(existing.initialBalance).toPlainString().replace('.', ',') else ""
+        val current = snapshot.account(existing.id)?.balance ?: existing.initialBalance
+        initial = if (current != 0L) existing.currency.toMajor(current).toPlainString().replace('.', ',') else ""
+        loadedBalanceText = initial
+        paidThrough = existing.paidThroughPeriod
         limit = if (existing.creditLimit != 0L) existing.currency.toMajor(existing.creditLimit).toPlainString().replace('.', ',') else ""
         closingDay = existing.closingDay.toString()
         dueDay = existing.dueDay.toString()
@@ -115,11 +124,27 @@ fun AccountEditScreen(
     val valid = name.isNotBlank() && (!type.isCard || (Money.parse(limit, currency) ?: 0) > 0) &&
         (closingDay.toIntOrNull() in 1..31) && (dueDay.toIntOrNull() in 1..31)
 
-    fun build(): AccountEntity = (existing ?: AccountEntity(name = "", type = type)).copy(
+    val cycle = CardCycle((closingDay.toIntOrNull() ?: 20).coerceIn(1, 31), (dueDay.toIntOrNull() ?: 5).coerceIn(1, 31))
+    val lastClosed = cycle.lastClosedPeriod(snapshot.today)
+    val paidThroughValue = paidThrough ?: lastClosed.minusMonths(1).toPeriod()
+
+    fun build(): AccountEntity {
+        val base = existing ?: AccountEntity(name = "", type = type)
+        val typed = (if (initial.trim().startsWith("-")) -1 else 1) * (Money.parse(initial, currency) ?: 0)
+        // Si cambió el saldo actual, se "re-ancla": ese es el saldo de ahora y lo anterior queda como historial.
+        val (initialBalance, anchor) = when {
+            type.isCard -> 0L to base.balanceAnchorAt
+            existing == null -> typed to 0L
+            initial != loadedBalanceText -> typed to System.currentTimeMillis()
+            else -> base.initialBalance to base.balanceAnchorAt
+        }
+        return base.copy(
         name = name.trim(),
         type = type,
         currencyCode = currency.code,
-        initialBalance = if (type.isCard) 0 else (if (initial.trim().startsWith("-")) -1 else 1) * (Money.parse(initial, currency) ?: 0),
+        initialBalance = initialBalance,
+        balanceAnchorAt = anchor,
+        paidThroughPeriod = if (type.isCard) paidThroughValue else 0,
         creditLimit = if (type.isCard) Money.parse(limit, currency) ?: 0 else 0,
         closingDay = closingDay.toIntOrNull() ?: 20,
         dueDay = dueDay.toIntOrNull() ?: 5,
@@ -129,6 +154,7 @@ fun AccountEditScreen(
         includeInTotal = includeInTotal,
         archived = archived,
     )
+    }
 
     Scaffold(
         topBar = {
@@ -153,7 +179,14 @@ fun AccountEditScreen(
             CurrencyDropdown(currency) { currency = it }
 
             AnimatedVisibility(!type.isCard) {
-                Field(initial, { initial = it }, "Saldo actual", KeyboardType.Decimal, prefix = currency.symbol)
+                Column {
+                    Field(initial, { initial = it }, "Saldo actual (hoy)", KeyboardType.Decimal, prefix = currency.symbol)
+                    Text(
+                        "Si cargas movimientos con fechas anteriores, quedan como historial y no cambian este saldo.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                    )
+                }
             }
             AnimatedVisibility(type.isCard) {
                 Column {
@@ -166,6 +199,19 @@ fun AccountEditScreen(
                     }
                     Text(
                         "Las compras hasta el día de facturación se cobran en el estado de cuenta de ese mes; el pago vence el día de pago siguiente.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
+                    )
+                    Label("Último estado de cuenta que ya pagaste")
+                    val options = listOf(lastClosed, lastClosed.minusMonths(1), lastClosed.minusMonths(2)).map { it.toPeriod() } + 0
+                    LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(options) { p ->
+                            FilterChip(selected = paidThroughValue == p, onClick = { paidThrough = p },
+                                label = { Text(if (p == 0) "Ninguno" else monthLong(p.toYearMonth())) })
+                        }
+                    }
+                    Text(
+                        "Las cuotas de compras antiguas que caen en esos estados de cuenta se dan por pagadas. Así puedes cargar compras pasadas con su fecha real.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
                     )

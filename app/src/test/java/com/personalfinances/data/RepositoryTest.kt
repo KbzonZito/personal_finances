@@ -99,6 +99,9 @@ class RepositoryTest {
     @Test fun yieldUsesDailyBalanceAndSystemCategory() = runBlocking {
         val start = today.minusDays(10)
         val acc = repo.saveAccount(AccountEntity(name = "Tenpo", type = AccountType.YIELD, initialBalance = 1_000_000, annualRate = 3.65, lastAccrualEpochDay = start.toEpochDay()))
+        // Cuenta creada al inicio del periodo (el depósito posterior es un movimiento nuevo, no historial).
+        val startMillis = start.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        db.accounts().upsert(db.accounts().get(acc)!!.copy(balanceAnchorAt = startMillis))
         // Depósito de 1.000.000 hace 5 días: los días anteriores no deben ganar sobre ese monto.
         repo.save(TransactionDraft(type = TxType.INCOME, accountId = acc, amount = 1_000_000, date = today.minusDays(5)))
         // Renombrar la categoría no debe romper la asignación.
@@ -119,6 +122,8 @@ class RepositoryTest {
         val start = today.minusMonths(2)
         repo.save(TransactionDraft(type = TxType.EXPENSE, accountId = acc, amount = 450_000, date = start, description = "Arriendo", repeat = Frequency.MONTHLY))
         repo.save(TransactionDraft(type = TxType.INCOME, accountId = acc, amount = 1_500_000, date = start, description = "Sueldo", repeat = Frequency.MONTHLY))
+        // Simula recurrentes creados hace 2 meses (cuya próxima fecha ya pasó).
+        db.recurring().getAll().forEach { db.recurring().upsert(it.copy(nextEpochDay = start.plusMonths(1).toEpochDay())) }
         val all = db.recurring().getAll()
         assertEquals(2, all.size)
         // El sueldo se registra solo; el arriendo pide confirmación.

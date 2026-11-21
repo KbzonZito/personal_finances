@@ -54,6 +54,8 @@ data class TransactionDraft(
     val detectionId: Long? = null,
     /** Si no es null, además crea un movimiento recurrente desde la próxima ocurrencia. */
     val repeat: Frequency? = null,
+    val originalAmount: Long? = null,
+    val originalCurrency: String? = null,
 )
 
 class FinanceRepository(
@@ -92,9 +94,10 @@ class FinanceRepository(
     suspend fun account(id: Long) = db.accounts().get(id)
 
     suspend fun saveAccount(account: AccountEntity): Long {
-        val toSave = if (account.type == AccountType.YIELD && account.lastAccrualEpochDay == 0L) {
-            account.copy(lastAccrualEpochDay = LocalDate.now().toEpochDay())
-        } else account
+        var toSave = account
+        if (account.type == AccountType.YIELD && account.lastAccrualEpochDay == 0L) toSave = toSave.copy(lastAccrualEpochDay = LocalDate.now().toEpochDay())
+        // Cuenta nueva: el saldo ingresado es el de HOY; lo que cargues con fechas pasadas es historial.
+        if (account.id == 0L && account.balanceAnchorAt == 0L) toSave = toSave.copy(balanceAnchorAt = System.currentTimeMillis())
         val id = db.accounts().upsert(toSave).let { if (it == -1L) account.id else it }
         onDataChanged()
         return id
@@ -161,6 +164,10 @@ class FinanceRepository(
             deferMonths = d.deferMonths,
             source = d.source,
             firstPeriod = first?.toPeriod() ?: 0,
+            originalAmount = d.originalAmount,
+            originalCurrency = d.originalCurrency,
+            // Al editar se conserva la fecha de creación: define si el movimiento es historial o no.
+            createdAt = previous?.createdAt ?: System.currentTimeMillis(),
         )
         val id = if (d.id == 0L) db.transactions().insert(entity) else { db.transactions().upsert(entity); d.id }
         db.installments().deleteForTransaction(id)
@@ -177,7 +184,7 @@ class FinanceRepository(
                 RecurringEntity(
                     type = d.type, accountId = d.accountId, toAccountId = d.toAccountId, amount = d.amount,
                     description = d.description.trim(), categoryId = d.categoryId, frequency = d.repeat,
-                    dayOfMonth = d.date.dayOfMonth, nextEpochDay = Recurrence.next(d.date, d.repeat, d.date.dayOfMonth).toEpochDay(),
+                    dayOfMonth = d.date.dayOfMonth, nextEpochDay = nextAfterToday(d.date, d.repeat).toEpochDay(),
                 )
             )
         }
@@ -230,6 +237,14 @@ class FinanceRepository(
     }
 
     // ---------- Recurrentes ----------
+
+    /** Primera ocurrencia futura: un movimiento antiguo marcado como recurrente no genera atrasados. */
+    private fun nextAfterToday(date: LocalDate, f: Frequency): LocalDate {
+        val today = LocalDate.now()
+        var n = Recurrence.next(date, f, date.dayOfMonth)
+        while (!n.isAfter(today)) n = Recurrence.next(n, f, date.dayOfMonth)
+        return n
+    }
 
     suspend fun recurring(id: Long) = db.recurring().get(id)
     suspend fun saveRecurring(r: RecurringEntity) { db.recurring().upsert(r) }
@@ -289,7 +304,7 @@ class FinanceRepository(
             val flows = HashMap<Long, Long>()
             var current = acc.initialBalance
             for (t in txs) {
-                val e = Balances.effectOn(acc.id, t)
+                val e = Balances.effectOn(acc, t)
                 if (e == 0L) continue
                 current += e
                 if (t.epochDay > last.toEpochDay()) flows.merge(t.epochDay, e, Long::plus)

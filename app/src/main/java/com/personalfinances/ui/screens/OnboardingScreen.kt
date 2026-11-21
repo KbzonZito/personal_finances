@@ -149,6 +149,9 @@ private fun FirstAccountStep(snapshot: FinanceSnapshot, vm: MainViewModel, onNex
                     creditLimit = if (type.isCard) parsed ?: 0 else 0,
                     closingDay = (closing.toIntOrNull() ?: 20).coerceIn(1, 31), dueDay = (due.toIntOrNull() ?: 5).coerceIn(1, 31),
                     annualRate = rate.replace(',', '.').toDoubleOrNull() ?: 0.0,
+                    paidThroughPeriod = if (type.isCard) com.personalfinances.domain.CardCycle(
+                        (closing.toIntOrNull() ?: 20).coerceIn(1, 31), (due.toIntOrNull() ?: 5).coerceIn(1, 31),
+                    ).lastClosedPeriod(java.time.LocalDate.now()).minusMonths(1).let { it.year * 100 + it.monthValue } else 0,
                 ))
                 onNext()
             },

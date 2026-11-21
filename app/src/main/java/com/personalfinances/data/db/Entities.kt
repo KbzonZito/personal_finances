@@ -43,6 +43,14 @@ data class AccountEntity(
     val archived: Boolean = false,
     val includeInTotal: Boolean = true,
     val sortOrder: Int = 0,
+    /**
+     * Momento en que el usuario declaró el saldo ([initialBalance] = saldo en ese momento).
+     * Los movimientos con fecha anterior son historial: ya están reflejados y no cambian el saldo.
+     * 0 = cuentas antiguas: [initialBalance] es el saldo antes de todos los movimientos.
+     */
+    @ColumnInfo(defaultValue = "0") val balanceAnchorAt: Long = 0,
+    /** Tarjetas: estados de cuenta hasta este yyyymm se consideran pagados (0 = ninguno). */
+    @ColumnInfo(defaultValue = "0") val paidThroughPeriod: Int = 0,
 ) {
     val currency: Currency get() = Currency.fromCode(currencyCode)
     val cycle: CardCycle get() = CardCycle(closingDay, dueDay)
@@ -83,6 +91,9 @@ data class TransactionEntity(
     val source: TxSource = TxSource.MANUAL,
     /** yyyymm del estado de cuenta de la primera cuota (0 = no aplica). Fijo al editar. */
     @ColumnInfo(defaultValue = "0") val firstPeriod: Int = 0,
+    /** Monto en la moneda original de la compra (ej. US$ en una tarjeta en pesos). */
+    val originalAmount: Long? = null,
+    val originalCurrency: String? = null,
 )
 
 @Serializable

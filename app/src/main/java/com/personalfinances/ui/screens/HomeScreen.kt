@@ -74,6 +74,7 @@ fun HomeScreen(
     onOpenTransaction: (Long) -> Unit,
     onPayCard: (AccountState) -> Unit,
     onOpenRecurring: () -> Unit,
+    onOpenProjection: () -> Unit,
     contentPadding: PaddingValues,
 ) {
     val hidden = snapshot.settings.hideAmounts
@@ -104,6 +105,21 @@ fun HomeScreen(
             }
         }
 
+        if (snapshot.activeAccounts.isNotEmpty()) item {
+            val projection = androidx.compose.runtime.remember(snapshot) { com.personalfinances.data.ProjectionBuilder.build(snapshot, 1) }
+            PressableCard(onClick = onOpenProjection, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) {
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Proyección a fin de mes", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        AnimatedAmount(projection.result.endOfThisMonth, main, MaterialTheme.typography.titleMedium, hidden = hidden,
+                            color = if (projection.result.endOfThisMonth < 0) fc.expense else MaterialTheme.colorScheme.onSurface)
+                    }
+                    com.personalfinances.ui.components.BalanceLine(projection.result.daily.map { it.second }, Modifier.size(width = 96.dp, height = 36.dp), fc.expense)
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
         item {
             AnimatedVisibility(snapshot.pending.isNotEmpty(), enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
                 PressableCard(onClick = onOpenPending, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {

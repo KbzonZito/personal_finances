@@ -109,9 +109,10 @@ class ScreenshotTest {
 
     private val noop: () -> Unit = {}
 
-    @Test fun home_dark() = shot("home_dark", true) { HomeScreen(it, noop, {}, noop, noop, noop, {}, {}, noop, PaddingValues()) }
-    @Test fun home_light() = shot("home_light", false) { HomeScreen(it, noop, {}, noop, noop, noop, {}, {}, noop, PaddingValues()) }
+    @Test fun home_dark() = shot("home_dark", true) { HomeScreen(it, noop, {}, noop, noop, noop, {}, {}, noop, noop, PaddingValues()) }
+    @Test fun home_light() = shot("home_light", false) { HomeScreen(it, noop, {}, noop, noop, noop, {}, {}, noop, noop, PaddingValues()) }
     @Test fun onboarding_dark() = shot("onboarding_dark", true) { OnboardingScreen(it.copy(accounts = emptyList()), MainViewModel((org.robolectric.RuntimeEnvironment.getApplication() as com.personalfinances.FinanceApp).container), {}) }
+    @Test fun projection_dark() = shot("projection_dark", true) { com.personalfinances.ui.screens.ProjectionScreen(it, noop, noop) }
     @Test fun cards_dark() = shot("cards_dark", true) { CardsScreen(it, {}, noop, PaddingValues()) }
     @Test fun card_detail_dark() = shot("card_detail_dark", true) { CardDetailScreen(it, 3, noop, noop, {}, {}, {}) }
     @Test fun transactions_light() = shot("transactions_light", false) { TransactionsScreen(it, {}, PaddingValues()) }

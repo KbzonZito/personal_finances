@@ -76,6 +76,7 @@ import com.personalfinances.ui.screens.HomeScreen
 import com.personalfinances.ui.screens.NotificationSetupScreen
 import com.personalfinances.ui.screens.PendingScreen
 import com.personalfinances.ui.screens.RecurringScreen
+import com.personalfinances.ui.screens.ProjectionScreen
 import com.personalfinances.ui.screens.OnboardingScreen
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.personalfinances.ui.screens.SettingsScreen
@@ -169,6 +170,7 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
                     onOpenTransaction = openTx,
                     onPayCard = { st -> openAdd(AddRequest(type = TxType.TRANSFER, toAccountId = st.account.id, amount = st.card?.billedDue)) },
                     onOpenRecurring = { nav.navigate("recurring") },
+                    onOpenProjection = { nav.navigate("projection") },
                     contentPadding = pad,
                 )
             }
@@ -225,6 +227,7 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
             composable("notifications") { NotificationSetupScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
             composable("categories") { CategoriesScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
             composable("recurring") { RecurringScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
+            composable("projection") { ProjectionScreen(snapshot, onBack = { nav.popBackStack() }, onOpenRecurring = { nav.navigate("recurring") }) }
         }
     }
 
@@ -262,6 +265,7 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
                 onDelete = { id -> vm.deleteTransaction(id); close(); Toast.makeText(context, "Movimiento eliminado", Toast.LENGTH_SHORT).show() },
                 onDismissDetection = { id -> vm.dismissDetection(id); DetectionNotifier.cancel(context, id); close() },
                 onClose = ::close,
+                onSaveAndContinue = { draft -> vm.saveTransaction(draft) },
             )
         }
     }

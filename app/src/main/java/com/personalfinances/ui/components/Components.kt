@@ -180,6 +180,10 @@ fun TransactionRow(item: TxItem, hidden: Boolean, onClick: () -> Unit, showAccou
             append("${tx.installmentCount} cuotas")
             if (item.billedInstallments > 0) append(" (${item.billedInstallments}/${tx.installmentCount})")
         }
+        if (tx.originalCurrency != null && tx.originalAmount != null) {
+            if (isNotEmpty()) append(" · ")
+            append(Money.format(tx.originalAmount, Currency.fromCode(tx.originalCurrency)))
+        }
         if (isEmpty() && item.category != null && tx.description.isNotBlank()) append(item.category.name)
     }
     val signed = when (tx.type) {

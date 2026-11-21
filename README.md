@@ -21,6 +21,9 @@ App Android de finanzas personales: minimalista, rápida y pensada para Chile (C
 - **Cuentas remuneradas (tipo Tenpo)**: configuras la tasa anual y la app suma el interés diario compuesto automáticamente (un movimiento "Rentabilidad <mes>" que se actualiza cada día). Botón "Ajustar saldo" para cuadrar con el saldo real.
 - **Detección por notificaciones** (opcional, con consentimiento explícito): lee solo las apps que elijas (bancos, Google Wallet, billeteras) y te notifica *"Gasto de $12.990 en LIDER — Registrar / Ignorar"*. Nada se guarda sin tu confirmación. Aprende qué cuenta corresponde a cada app/tarjeta y qué categoría a cada comercio.
 - **Movimientos recurrentes**: marca "Cada mes/semana/año" al agregar un movimiento (sueldo, arriendo, suscripciones). Cuando llega la fecha queda en la bandeja para confirmar, o se registra solo si lo marcas como automático. Sección "Próximos" en Inicio.
+- **Proyección de saldo**: saldo disponible día a día considerando recurrentes, pagos de tarjetas en su vencimiento y rentabilidad. Punto más bajo, tabla mes a mes y desde cuándo quedas sin cuotas.
+- **Compras en otra moneda**: ingresa US$/€ en una cuenta en pesos; la app convierte con la tasa del día o usas el monto que cobró el banco. Se guarda el monto original.
+- **Cargar datos pasados sin descuadres**: el saldo que ingresas al crear la cuenta es el de hoy y lo anterior queda como historial; en tarjetas indicas el último estado pagado. Botón "Guardar y otro" para cargar rápido.
 - **Recordatorios de tarjetas**: 3 días antes del vencimiento, el día del vencimiento y el día de cierre (nunca de noche).
 - **Agregar rápido**: widget de pantalla de inicio, tile en ajustes rápidos, accesos directos del ícono (mantener presionado) y teclado numérico propio.
 - **Respaldo**: los datos viven solo en el teléfono (Room). Respaldo automático semanal a una carpeta que elijas (guarda los últimos 6), exportar/importar JSON manual y backup automático de Android.

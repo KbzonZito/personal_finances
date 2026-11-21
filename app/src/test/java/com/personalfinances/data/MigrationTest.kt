@@ -44,4 +44,15 @@ class MigrationTest {
         db.query("SELECT recurringId FROM detections WHERE id = 1").use { it.moveToFirst(); assertEquals(true, it.isNull(0)) }
         db.query("SELECT COUNT(*) FROM recurring").use { it.moveToFirst(); assertEquals(0, it.getInt(0)) }
     }
+
+    @Test fun migrate3To4_newColumnsDefaultToOldBehaviour() {
+        helper.createDatabase("m34.db", 3).apply {
+            execSQL("INSERT INTO accounts (id, name, type, currencyCode, initialBalance, color, creditLimit, closingDay, dueDay, annualRate, lastAccrualEpochDay, lastDigits, archived, includeInTotal, sortOrder) VALUES (1, 'Corriente', 'CHECKING', 'CLP', 1000, 0, 0, 20, 5, 0.0, 0, NULL, 0, 1, 0)")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate("m34.db", 4, true)
+        db.query("SELECT balanceAnchorAt, paidThroughPeriod, initialBalance FROM accounts WHERE id = 1").use {
+            it.moveToFirst(); assertEquals(0L, it.getLong(0)); assertEquals(0, it.getInt(1)); assertEquals(1000L, it.getLong(2))
+        }
+    }
 }

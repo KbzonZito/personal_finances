@@ -148,14 +148,28 @@ data class FinanceSnapshot(
 object Balances {
     data class Result(val balances: Map<Long, Long>, val cards: Map<Long, CardSummary>)
 
-    /** Efecto neto de un movimiento sobre el saldo de [accountId] (cuentas que no son tarjeta). */
-    fun effectOn(accountId: Long, t: TransactionEntity): Long {
+    private fun anchorDay(a: AccountEntity): Long =
+        if (a.balanceAnchorAt == 0L) Long.MIN_VALUE
+        else java.time.Instant.ofEpochMilli(a.balanceAnchorAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay()
+
+    /**
+     * ¿El movimiento cambia el saldo de [a]? Los anteriores al momento en que se declaró el saldo
+     * son historial (ya están incluidos en ese saldo).
+     */
+    fun counts(a: AccountEntity?, t: TransactionEntity, anchorDay: Long = a?.let(::anchorDay) ?: Long.MIN_VALUE): Boolean {
+        if (a == null || a.balanceAnchorAt == 0L) return true
+        return t.epochDay > anchorDay || (t.epochDay == anchorDay && t.createdAt > a.balanceAnchorAt)
+    }
+
+    /** Efecto neto de un movimiento sobre el saldo de [account] (cuentas que no son tarjeta). */
+    fun effectOn(account: AccountEntity, t: TransactionEntity): Long {
+        if (!counts(account, t)) return 0
         var e = 0L
-        if (t.accountId == accountId) e += when (t.type) {
+        if (t.accountId == account.id) e += when (t.type) {
             TxType.EXPENSE, TxType.TRANSFER -> -t.amount
             TxType.INCOME, TxType.INTEREST, TxType.ADJUSTMENT -> t.amount
         }
-        if (t.type == TxType.TRANSFER && t.toAccountId == accountId) e += t.toAmount ?: t.amount
+        if (t.type == TxType.TRANSFER && t.toAccountId == account.id) e += t.toAmount ?: t.amount
         return e
     }
 
@@ -163,29 +177,38 @@ object Balances {
         val bal = HashMap<Long, Long>()
         val credits = HashMap<Long, Long>()
         accounts.forEach { bal[it.id] = it.initialBalance }
+        val byId = accounts.associateBy { it.id }
+        val anchors = accounts.associate { it.id to anchorDay(it) }
         val cardIds = accounts.filter { it.type.isCard }.map { it.id }.toSet()
+        fun ok(id: Long, t: TransactionEntity) = counts(byId[id], t, anchors[id] ?: Long.MIN_VALUE)
 
         for (t in txs) {
             when (t.type) {
-                TxType.EXPENSE -> bal.merge(t.accountId, -t.amount, Long::plus)
-                TxType.INCOME, TxType.INTEREST, TxType.ADJUSTMENT -> {
+                TxType.EXPENSE -> if (ok(t.accountId, t)) bal.merge(t.accountId, -t.amount, Long::plus)
+                TxType.INCOME, TxType.INTEREST, TxType.ADJUSTMENT -> if (ok(t.accountId, t)) {
                     bal.merge(t.accountId, t.amount, Long::plus)
                     if (t.accountId in cardIds) credits.merge(t.accountId, t.amount, Long::plus)
                 }
                 TxType.TRANSFER -> {
-                    bal.merge(t.accountId, -t.amount, Long::plus)
+                    if (ok(t.accountId, t)) bal.merge(t.accountId, -t.amount, Long::plus)
                     t.toAccountId?.let { to ->
-                        val received = t.toAmount ?: t.amount
-                        bal.merge(to, received, Long::plus)
-                        if (to in cardIds) credits.merge(to, received, Long::plus)
+                        if (ok(to, t)) {
+                            val received = t.toAmount ?: t.amount
+                            bal.merge(to, received, Long::plus)
+                            if (to in cardIds) credits.merge(to, received, Long::plus)
+                        }
                     }
                 }
             }
         }
 
+        // Tarjetas: las cuotas cuentan aunque la compra sea antigua (son deuda real), salvo las de
+        // estados de cuenta ya pagados.
         val instByAcc = installments.groupBy { it.accountId }
         val cards = accounts.filter { it.type.isCard }.associate { a ->
-            val lines = instByAcc[a.id].orEmpty().map { InstallmentLine(it.period.toYearMonth(), it.amount, it.principal) }
+            val lines = instByAcc[a.id].orEmpty()
+                .filter { a.paidThroughPeriod == 0 || it.period > a.paidThroughPeriod }
+                .map { InstallmentLine(it.period.toYearMonth(), it.amount, it.principal) }
             a.id to CardCalculator.summarize(a.cycle, a.creditLimit, lines, credits[a.id] ?: 0, today)
         }
         return Result(bal, cards)
