@@ -45,7 +45,7 @@ Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo bá
 ## Fase 2 — Registrar más rápido
 
 - [x] **Movimientos recurrentes** (M): sueldo, arriendo, suscripciones, cuentas básicas. Se crean como pendientes o automáticos, con recordatorio.
-- [ ] **Favoritos en la hoja rápida** (S): "☕ Café $3.500" con un toque; sugeridos según lo más frecuente.
+- [x] **Favoritos en la hoja rápida** (S): "☕ Café $3.500" con un toque; sugeridos según lo más frecuente.
 - [ ] **"Enséñale" al lector** (M): desde una notificación que no se reconoció, marcar cuál es el monto y cuál el comercio, y guardarlo como regla para esa app.
 - [ ] **Registro automático opcional para comercios de confianza** (S), con aviso y "Deshacer".
 - [ ] **Dividir un gasto** entre categorías, y **gastos compartidos** ("me deben $X") (M).
@@ -56,8 +56,8 @@ Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo bá
 ## Fase 3 — Entender en qué se va la plata
 
 - [x] **Proyección de saldo** (M) ⭐: saldo futuro de tus cuentas sumando sueldo y recurrentes y restando las cuotas que vienen. Responde "¿me alcanza a fin de mes?" y "¿cuándo quedo libre de cuotas?".
-- [ ] **Presupuestos por categoría** (M), con barra de avance y aviso al llegar al 80% y al 100%.
-- [ ] **Reportes** (M): tendencia mensual, comparación con el mes anterior, gasto diario promedio, estimación de cierre de mes, top comercios.
+- [x] **Presupuestos por categoría** (M), con barra de avance y aviso al llegar al 80% y al 100%.
+- [x] **Reportes** (M): tendencia mensual, comparación con el mes anterior, gasto diario promedio, estimación de cierre de mes, top comercios.
 - [ ] **Evolución del patrimonio** (S): guardar el total cada día y graficarlo.
 - [ ] **Metas de ahorro** (S) ligadas a una cuenta remunerada: "con tu ritmo y la tasa de Tenpo, llegas a $X en N meses".
 - [ ] Etiquetas y subcategorías; búsqueda por monto o rango de fechas (S).

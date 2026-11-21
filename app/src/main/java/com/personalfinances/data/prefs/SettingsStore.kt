@@ -35,6 +35,7 @@ data class Settings(
     /** FLAG_SECURE: oculta la app en recientes y bloquea capturas de pantalla. */
     val secureScreen: Boolean = false,
     val remindersEnabled: Boolean = true,
+    val budgetAlerts: Boolean = true,
     val onboardingDone: Boolean = false,
     /** Carpeta (SAF tree URI) para respaldos automáticos; null = desactivado. */
     val autoBackupUri: String? = null,
@@ -59,6 +60,7 @@ class SettingsStore(private val context: Context) {
         val lockTimeout = intPreferencesKey("lock_timeout")
         val secure = booleanPreferencesKey("secure_screen")
         val reminders = booleanPreferencesKey("reminders")
+        val budgetAlerts = booleanPreferencesKey("budget_alerts")
         val onboarding = booleanPreferencesKey("onboarding_done")
         val backupUri = stringPreferencesKey("auto_backup_uri")
         val lastBackup = stringPreferencesKey("last_auto_backup")
@@ -79,6 +81,7 @@ class SettingsStore(private val context: Context) {
             lockTimeoutMinutes = p[K.lockTimeout] ?: 1,
             secureScreen = p[K.secure] ?: false,
             remindersEnabled = p[K.reminders] ?: true,
+            budgetAlerts = p[K.budgetAlerts] ?: true,
             onboardingDone = p[K.onboarding] ?: false,
             autoBackupUri = p[K.backupUri],
             lastAutoBackup = p[K.lastBackup]?.toLongOrNull() ?: 0,
@@ -97,6 +100,7 @@ class SettingsStore(private val context: Context) {
     suspend fun setLockTimeout(minutes: Int) = context.dataStore.edit { it[K.lockTimeout] = minutes }
     suspend fun setSecureScreen(v: Boolean) = context.dataStore.edit { it[K.secure] = v }
     suspend fun setRemindersEnabled(v: Boolean) = context.dataStore.edit { it[K.reminders] = v }
+    suspend fun setBudgetAlerts(v: Boolean) = context.dataStore.edit { it[K.budgetAlerts] = v }
     suspend fun setOnboardingDone() = context.dataStore.edit { it[K.onboarding] = true }
     suspend fun setAutoBackupUri(uri: String?) = context.dataStore.edit { if (uri == null) it.remove(K.backupUri) else it[K.backupUri] = uri }
     suspend fun setLastAutoBackup(t: Long) = context.dataStore.edit { it[K.lastBackup] = t.toString() }

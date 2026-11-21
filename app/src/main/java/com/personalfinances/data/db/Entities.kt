@@ -198,3 +198,11 @@ data class RecurringEntity(
     val autoCreate: Boolean = false,
     val active: Boolean = true,
 )
+
+/** Presupuesto mensual por categoría, en la moneda principal. categoryId = 0 → presupuesto total. */
+@Serializable
+@Entity(tableName = "budgets")
+data class BudgetEntity(
+    @PrimaryKey val categoryId: Long,
+    val amount: Long,
+)

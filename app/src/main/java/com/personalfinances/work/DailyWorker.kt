@@ -41,10 +41,24 @@ class DailyWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
             runCatching { repo.processRecurring().forEach { DetectionNotifier.show(context, it) } }
             runCatching { sendReminders(context, c) }
             runCatching {
+                val h = LocalTime.now().hour
+                if (h in 8..21) sendBudgetAlerts(context, c, c.repository.snapshot.value)
+            }
+            runCatching {
                 val s = c.settings.current()
                 if (System.currentTimeMillis() - s.ratesUpdatedAt > 20 * 3600_000L) c.settings.setRates(RatesFetcher.fetch(s.rates))
             }
             runCatching { AutoBackup.runIfDue(context, c) }
+        }
+
+        /** Alertas de presupuesto (80% y 100%), una vez por mes cada una. */
+        suspend fun sendBudgetAlerts(context: Context, c: AppContainer, snap: com.personalfinances.data.FinanceSnapshot) {
+            val settings = c.settings.current()
+            if (!settings.budgetAlerts || !snap.loaded) return
+            val names = snap.categories.associate { it.id to it.name }
+            val alerts = com.personalfinances.domain.BudgetCalc.alerts(snap.budgets, names, settings.mainCurrency, LocalDate.now(), settings.sentReminders)
+            alerts.forEach { DetectionNotifier.showReminder(context, 200_000 + Math.floorMod(it.key.hashCode(), 100_000), it.title, it.text) }
+            if (alerts.isNotEmpty()) c.settings.addSentReminders(alerts.map { it.key })
         }
 
         private suspend fun sendReminders(context: Context, c: AppContainer) {

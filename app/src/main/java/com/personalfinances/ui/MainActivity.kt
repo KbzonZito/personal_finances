@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.ReceiptLong
@@ -77,6 +79,8 @@ import com.personalfinances.ui.screens.NotificationSetupScreen
 import com.personalfinances.ui.screens.PendingScreen
 import com.personalfinances.ui.screens.RecurringScreen
 import com.personalfinances.ui.screens.ProjectionScreen
+import com.personalfinances.ui.screens.ReportsScreen
+import com.personalfinances.ui.screens.BudgetsScreen
 import com.personalfinances.ui.screens.OnboardingScreen
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.personalfinances.ui.screens.SettingsScreen
@@ -91,6 +95,7 @@ private val tabs = listOf(
     Tab("home", "Inicio", Icons.Outlined.Home, Icons.Filled.Home),
     Tab("transactions", "Movimientos", Icons.Outlined.ReceiptLong, Icons.Filled.ReceiptLong),
     Tab("cards", "Tarjetas", Icons.Outlined.CreditCard, Icons.Filled.CreditCard),
+    Tab("reports", "Reportes", Icons.Outlined.Insights, Icons.Filled.Insights),
     Tab("settings", "Ajustes", Icons.Outlined.Settings, Icons.Filled.Settings),
 )
 
@@ -171,6 +176,7 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
                     onPayCard = { st -> openAdd(AddRequest(type = TxType.TRANSFER, toAccountId = st.account.id, amount = st.card?.billedDue)) },
                     onOpenRecurring = { nav.navigate("recurring") },
                     onOpenProjection = { nav.navigate("projection") },
+                    onOpenBudgets = { nav.navigate("budgets") },
                     contentPadding = pad,
                 )
             }
@@ -178,8 +184,10 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
             composable("cards") {
                 CardsScreen(snapshot, onOpenCard = { nav.navigate("card/${it.account.id}") }, onNewCard = { nav.navigate("accountEdit?type=CREDIT_CARD") }, contentPadding = pad)
             }
+            composable("reports") { ReportsScreen(snapshot, onOpenBudgets = { nav.navigate("budgets") }, contentPadding = pad) }
+            composable("budgets") { BudgetsScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
             composable("settings") {
-                SettingsScreen(snapshot, vm, onOpenNotifications = { nav.navigate("notifications") }, onOpenCategories = { nav.navigate("categories") }, onOpenRecurring = { nav.navigate("recurring") }, contentPadding = pad)
+                SettingsScreen(snapshot, vm, onOpenNotifications = { nav.navigate("notifications") }, onOpenCategories = { nav.navigate("categories") }, onOpenRecurring = { nav.navigate("recurring") }, onOpenBudgets = { nav.navigate("budgets") }, contentPadding = pad)
             }
             composable("card/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 val id = e.arguments!!.getLong("id")

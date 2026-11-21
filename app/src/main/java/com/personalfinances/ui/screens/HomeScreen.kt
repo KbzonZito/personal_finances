@@ -75,6 +75,7 @@ fun HomeScreen(
     onPayCard: (AccountState) -> Unit,
     onOpenRecurring: () -> Unit,
     onOpenProjection: () -> Unit,
+    onOpenBudgets: () -> Unit,
     contentPadding: PaddingValues,
 ) {
     val hidden = snapshot.settings.hideAmounts
@@ -191,6 +192,11 @@ fun HomeScreen(
         if (upcoming.isNotEmpty()) {
             item { SectionHeader("Próximos", Modifier.padding(top = 12.dp), action = "Ver todos", onAction = onOpenRecurring) }
             items(upcoming, key = { "rec" + it.id }) { r -> RecurringRow(r, snapshot, onClick = onOpenRecurring) }
+        }
+
+        if (snapshot.budgets.isNotEmpty()) {
+            item { SectionHeader("Presupuestos", Modifier.padding(top = 12.dp), action = "Ver todos", onAction = onOpenBudgets) }
+            items(snapshot.budgets.take(3), key = { "bud" + it.categoryId }) { s -> BudgetRow(s, snapshot, onOpenBudgets) }
         }
 
         if (snapshot.expenseByCategory.isNotEmpty()) {

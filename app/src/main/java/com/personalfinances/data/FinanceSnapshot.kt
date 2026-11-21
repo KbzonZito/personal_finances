@@ -5,6 +5,10 @@ import com.personalfinances.data.db.CategoryEntity
 import com.personalfinances.data.db.DetectionEntity
 import com.personalfinances.data.db.InstallmentEntity
 import com.personalfinances.data.db.RecurringEntity
+import com.personalfinances.data.db.BudgetEntity
+import com.personalfinances.domain.BudgetCalc
+import com.personalfinances.domain.BudgetStatus
+import com.personalfinances.domain.ReportTx
 import com.personalfinances.data.db.TransactionEntity
 import com.personalfinances.data.db.TxType
 import com.personalfinances.data.db.toYearMonth
@@ -55,8 +59,23 @@ data class FinanceSnapshot(
     val monthIncome: Long = 0,
     val expenseByCategory: List<Pair<CategoryEntity?, Long>> = emptyList(),
     val recurring: List<RecurringEntity> = emptyList(),
+    val budgets: List<BudgetStatus> = emptyList(),
+    /** Movimientos frecuentes, para completar la hoja rápida con un toque. */
+    val favorites: List<Favorite> = emptyList(),
     val loaded: Boolean = false,
 ) {
+    /** Ingresos y gastos convertidos a la moneda principal, para reportes. */
+    fun reportTxs(): List<ReportTx> {
+        val main = settings.mainCurrency
+        return transactions.filter { it.tx.type == TxType.EXPENSE || it.tx.type == TxType.INCOME || it.tx.type == TxType.INTEREST }.map {
+            ReportTx(
+                LocalDate.ofEpochDay(it.tx.epochDay),
+                settings.rates.convert(it.tx.amount, it.account?.currency ?: main, main),
+                it.tx.type != TxType.EXPENSE, it.tx.categoryId, it.tx.description,
+            )
+        }
+    }
+
     val activeAccounts get() = accounts.filter { !it.account.archived }
     val cards get() = activeAccounts.filter { it.account.type.isCard }
 
@@ -90,6 +109,7 @@ data class FinanceSnapshot(
             pending: List<DetectionEntity>,
             recurring: List<RecurringEntity> = emptyList(),
             today: LocalDate = LocalDate.now(),
+            budgets: List<BudgetEntity> = emptyList(),
         ): FinanceSnapshot {
             val accById = accounts.associateBy { it.id }
             val catById = categories.associateBy { it.id }
@@ -139,6 +159,11 @@ data class FinanceSnapshot(
                 monthIncome = incomes.sumOf(::inMain),
                 expenseByCategory = byCat,
                 recurring = recurring,
+                budgets = budgets.map { b ->
+                    val spent = if (b.categoryId == 0L) expenses.sumOf(::inMain) else expenses.filter { it.tx.categoryId == b.categoryId }.sumOf(::inMain)
+                    BudgetCalc.status(b.categoryId, b.amount, spent, today)
+                }.sortedByDescending { it.fraction },
+                favorites = Favorites.compute(txs, today),
                 loaded = true,
             )
         }
@@ -212,5 +237,33 @@ object Balances {
             a.id to CardCalculator.summarize(a.cycle, a.creditLimit, lines, credits[a.id] ?: 0, today)
         }
         return Result(bal, cards)
+    }
+}
+
+data class Favorite(
+    val type: TxType,
+    val accountId: Long,
+    val categoryId: Long?,
+    val description: String,
+    /** Monto si casi siempre es el mismo (ej. un café); null si varía (ej. supermercado). */
+    val amount: Long?,
+    val count: Int,
+)
+
+object Favorites {
+    /** Combinaciones (descripción, cuenta, categoría) usadas 3+ veces en los últimos 90 días. */
+    fun compute(txs: List<TransactionEntity>, today: LocalDate, max: Int = 6): List<Favorite> {
+        val since = today.minusDays(90).toEpochDay()
+        return txs.asSequence()
+            .filter { it.epochDay >= since && (it.type == TxType.EXPENSE || it.type == TxType.INCOME) && it.description.isNotBlank() && it.installmentCount == 1 }
+            .groupBy { Triple(it.description.trim().lowercase(), it.accountId, it.categoryId) }
+            .filterValues { it.size >= 3 }
+            .map { (_, list) ->
+                val mode = list.groupingBy { it.amount }.eachCount().maxBy { it.value }
+                Favorite(list.first().type, list.first().accountId, list.first().categoryId, list.first().description.trim(),
+                    mode.key.takeIf { mode.value >= 3 && mode.value * 10 >= list.size * 6 }, list.size)
+            }
+            .sortedByDescending { it.count }
+            .take(max)
     }
 }

@@ -19,9 +19,11 @@ import com.personalfinances.domain.ExchangeRates
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainViewModel(private val c: AppContainer) : ViewModel() {
+    private val appContext = c.appContext
     val snapshot: StateFlow<FinanceSnapshot> = c.repository.snapshot
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val messages: SharedFlow<String> = _messages
@@ -30,7 +32,15 @@ class MainViewModel(private val c: AppContainer) : ViewModel() {
         runCatching { block() }.onFailure { _messages.tryEmit(it.message ?: "Ocurrió un error") }
     }
 
-    fun saveTransaction(d: TransactionDraft, onDone: () -> Unit = {}) = io { c.repository.save(d); onDone() }
+    fun saveTransaction(d: TransactionDraft, onDone: () -> Unit = {}) = io {
+        val id = c.repository.save(d)
+        onDone()
+        if (d.type == com.personalfinances.data.db.TxType.EXPENSE) {
+            // Espera a que el estado incluya el gasto y revisa presupuestos al tiro.
+            val snap = kotlinx.coroutines.withTimeoutOrNull(3_000) { c.repository.snapshot.first { s -> s.transactions.any { it.tx.id == id } } }
+            if (snap != null) com.personalfinances.work.DailyWorker.sendBudgetAlerts(appContext, c, snap)
+        }
+    }
     fun deleteTransaction(id: Long) = io { c.repository.deleteTransaction(id) }
     fun saveAccount(a: AccountEntity) = io { c.repository.saveAccount(a) }
     fun deleteAccount(a: AccountEntity) = io { c.repository.deleteAccount(a) }
@@ -48,6 +58,9 @@ class MainViewModel(private val c: AppContainer) : ViewModel() {
     fun setLockTimeout(minutes: Int) = io { c.settings.setLockTimeout(minutes) }
     fun setSecureScreen(v: Boolean) = io { c.settings.setSecureScreen(v) }
     fun setRemindersEnabled(v: Boolean) = io { c.settings.setRemindersEnabled(v) }
+    fun setBudgetAlerts(v: Boolean) = io { c.settings.setBudgetAlerts(v) }
+    fun saveBudget(categoryId: Long, amount: Long) = io { c.repository.saveBudget(com.personalfinances.data.db.BudgetEntity(categoryId, amount)) }
+    fun deleteBudget(categoryId: Long) = io { c.repository.deleteBudget(categoryId) }
     fun finishOnboarding() = io { c.settings.setOnboardingDone() }
     fun saveRecurring(r: RecurringEntity) = io { c.repository.saveRecurring(r) }
     fun deleteRecurring(id: Long) = io { c.repository.deleteRecurring(id) }

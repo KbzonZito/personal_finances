@@ -11,6 +11,7 @@ import com.personalfinances.data.db.InstallmentEntity
 import com.personalfinances.data.db.MerchantRuleEntity
 import com.personalfinances.data.db.SourceRuleEntity
 import com.personalfinances.data.db.RecurringEntity
+import com.personalfinances.data.db.BudgetEntity
 import com.personalfinances.domain.Frequency
 import com.personalfinances.domain.Recurrence
 import com.personalfinances.data.db.SystemCategory
@@ -80,8 +81,8 @@ class FinanceRepository(
 
     /** Estado completo de la app, calculado una sola vez y compartido por todas las pantallas. */
     val snapshot: StateFlow<FinanceSnapshot> = combine(
-        raw, settingsStore.settings, db.detections().observePending(), db.recurring().observeAll(),
-    ) { r, s, p, rec -> FinanceSnapshot.build(s, r.accounts, r.categories, r.txs, r.installments, p, rec) }
+        raw, settingsStore.settings, db.detections().observePending(), db.recurring().observeAll(), db.budgets().observeAll(),
+    ) { r, s, p, rec, b -> FinanceSnapshot.build(s, r.accounts, r.categories, r.txs, r.installments, p, rec, budgets = b) }
         .flowOn(Dispatchers.Default)
         .stateIn(scope, SharingStarted.Eagerly, FinanceSnapshot())
 
@@ -235,6 +236,11 @@ class FinanceRepository(
         val rule = rules.firstOrNull { it.lastDigits == lastDigits.orEmpty() } ?: rules.firstOrNull()
         return rule?.accountId?.takeIf { id -> accounts.any { it.id == id } }
     }
+
+    // ---------- Presupuestos ----------
+
+    suspend fun saveBudget(b: BudgetEntity) = db.budgets().upsert(b)
+    suspend fun deleteBudget(categoryId: Long) = db.budgets().delete(categoryId)
 
     // ---------- Recurrentes ----------
 

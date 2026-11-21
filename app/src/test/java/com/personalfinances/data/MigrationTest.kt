@@ -55,4 +55,11 @@ class MigrationTest {
             it.moveToFirst(); assertEquals(0L, it.getLong(0)); assertEquals(0, it.getInt(1)); assertEquals(1000L, it.getLong(2))
         }
     }
+
+    @Test fun migrate4To5_addsBudgets() {
+        helper.createDatabase("m45.db", 4).close()
+        val db = helper.runMigrationsAndValidate("m45.db", 5, true)
+        db.execSQL("INSERT INTO budgets (categoryId, amount) VALUES (0, 500000)")
+        db.query("SELECT amount FROM budgets WHERE categoryId = 0").use { it.moveToFirst(); assertEquals(500000L, it.getLong(0)) }
+    }
 }

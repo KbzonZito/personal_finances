@@ -362,6 +362,27 @@ fun AddTransactionContent(
                 }
             }
 
+            // Favoritos: movimientos frecuentes con un toque
+            val favs = if (request.transactionId == null && detection == null && type != TxType.TRANSFER)
+                snapshot.favorites.filter { it.type == type && accounts.any { a -> a.id == it.accountId } } else emptyList()
+            if (favs.isNotEmpty()) {
+                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(favs) { f ->
+                        val cat = snapshot.categories.firstOrNull { it.id == f.categoryId }
+                        val acc = accounts.first { it.id == f.accountId }
+                        androidx.compose.material3.SuggestionChip(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                accountId = f.accountId; categoryId = f.categoryId; categoryTouched = true
+                                description = f.description; entryCurrency = null; chargedText = ""
+                                f.amount?.let { amountText = minorToKeypad(it, acc.currency) }
+                            },
+                            label = { Text("${cat?.emoji ?: "⭐"} ${f.description}" + (f.amount?.let { " · " + Money.format(it, acc.currency) } ?: ""), maxLines = 1) },
+                        )
+                    }
+                }
+            }
+
             // Monto
             val amountScale by animateFloatAsState(if (amountText.isEmpty()) 0.92f else 1f, spring(Spring.DampingRatioMediumBouncy), label = "amt")
             Text(
