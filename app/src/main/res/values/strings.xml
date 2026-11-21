@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Finanzas</string>
+    <string name="tile_label">Nuevo gasto</string>
+    <string name="widget_label">Finanzas rápido</string>
+    <string name="widget_description">Patrimonio y botones para agregar gastos o ingresos</string>
+    <string name="shortcut_expense">Nuevo gasto</string>
+    <string name="shortcut_income">Nuevo ingreso</string>
+</resources>

@@ -1,0 +1,53 @@
+package com.personalfinances.data.db
+
+import android.content.Context
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+
+@Database(
+    entities = [
+        AccountEntity::class, TransactionEntity::class, InstallmentEntity::class, CategoryEntity::class,
+        DetectionEntity::class, SourceRuleEntity::class, MerchantRuleEntity::class,
+    ],
+    version = 1,
+    exportSchema = true,
+)
+@TypeConverters(Converters::class)
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun accounts(): AccountDao
+    abstract fun transactions(): TransactionDao
+    abstract fun installments(): InstallmentDao
+    abstract fun categories(): CategoryDao
+    abstract fun detections(): DetectionDao
+    abstract fun rules(): RuleDao
+    abstract fun maintenance(): MaintenanceDao
+
+    companion object {
+        fun build(context: Context): AppDatabase =
+            Room.databaseBuilder(context, AppDatabase::class.java, "finances.db").build()
+    }
+}
+
+object DefaultCategories {
+    fun all(): List<CategoryEntity> = listOf(
+        CategoryEntity(name = "Comida", emoji = "🍔", color = 0xFFFF7675, sortOrder = 0),
+        CategoryEntity(name = "Supermercado", emoji = "🛒", color = 0xFF00B894, sortOrder = 1),
+        CategoryEntity(name = "Transporte", emoji = "🚌", color = 0xFF0984E3, sortOrder = 2),
+        CategoryEntity(name = "Hogar", emoji = "🏠", color = 0xFFE17055, sortOrder = 3),
+        CategoryEntity(name = "Cuentas", emoji = "💡", color = 0xFFFDCB6E, sortOrder = 4),
+        CategoryEntity(name = "Salud", emoji = "💊", color = 0xFF55EFC4, sortOrder = 5),
+        CategoryEntity(name = "Entretención", emoji = "🎬", color = 0xFFA29BFE, sortOrder = 6),
+        CategoryEntity(name = "Compras", emoji = "🛍️", color = 0xFFFD79A8, sortOrder = 7),
+        CategoryEntity(name = "Suscripciones", emoji = "📺", color = 0xFF6C5CE7, sortOrder = 8),
+        CategoryEntity(name = "Educación", emoji = "📚", color = 0xFF74B9FF, sortOrder = 9),
+        CategoryEntity(name = "Viajes", emoji = "✈️", color = 0xFF00CEC9, sortOrder = 10),
+        CategoryEntity(name = "Mascotas", emoji = "🐾", color = 0xFFB2BEC3, sortOrder = 11),
+        CategoryEntity(name = "Otros", emoji = "📦", color = 0xFF636E72, sortOrder = 12),
+        CategoryEntity(name = "Sueldo", emoji = "💼", color = 0xFF00B894, isIncome = true, sortOrder = 0),
+        CategoryEntity(name = "Ingreso extra", emoji = "💰", color = 0xFFFDCB6E, isIncome = true, sortOrder = 1),
+        CategoryEntity(name = "Reembolso", emoji = "↩️", color = 0xFF74B9FF, isIncome = true, sortOrder = 2),
+        CategoryEntity(name = "Rentabilidad", emoji = "📈", color = 0xFF55EFC4, isIncome = true, sortOrder = 3),
+    )
+}
