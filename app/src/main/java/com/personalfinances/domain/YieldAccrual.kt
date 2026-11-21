@@ -30,6 +30,36 @@ object YieldAccrual {
         return result.mapValues { floor(it.value + 1e-6).toLong() }.filterValues { it > 0 }
     }
 
+    /**
+     * Igual que [accrue] pero con el saldo real de cada día: [endBalance] es el saldo al final del día [from]
+     * y [flows] son los movimientos netos (epochDay → monto) de los días siguientes. El interés del día D se
+     * calcula sobre el saldo al cierre del día anterior.
+     */
+    fun accrueWithFlows(
+        endBalance: Long,
+        annualRatePercent: Double,
+        from: LocalDate,
+        to: LocalDate,
+        flows: Map<Long, Long>,
+    ): Map<YearMonth, Long> {
+        if (!to.isAfter(from) || annualRatePercent <= 0.0) return emptyMap()
+        val daily = annualRatePercent / 100.0 / 365.0
+        var b = endBalance.toDouble()
+        val result = linkedMapOf<YearMonth, Double>()
+        var day = from.plusDays(1)
+        while (!day.isAfter(to)) {
+            if (b > 0) {
+                val i = b * daily
+                b += i
+                val ym = YearMonth.from(day)
+                result[ym] = (result[ym] ?: 0.0) + i
+            }
+            b += flows[day.toEpochDay()] ?: 0L
+            day = day.plusDays(1)
+        }
+        return result.mapValues { floor(it.value + 1e-6).toLong() }.filterValues { it > 0 }
+    }
+
     /** Proyección de ganancia para N días con el saldo actual. */
     fun project(balance: Long, annualRatePercent: Double, days: Int): Long {
         if (annualRatePercent <= 0 || balance <= 0) return 0

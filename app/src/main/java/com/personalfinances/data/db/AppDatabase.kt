@@ -1,7 +1,10 @@
 package com.personalfinances.data.db
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Database
+import androidx.room.migration.AutoMigrationSpec
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
@@ -11,8 +14,9 @@ import androidx.room.TypeConverters
         AccountEntity::class, TransactionEntity::class, InstallmentEntity::class, CategoryEntity::class,
         DetectionEntity::class, SourceRuleEntity::class, MerchantRuleEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
+    autoMigrations = [AutoMigration(from = 1, to = 2, spec = Migrations.From1To2::class)],
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -27,6 +31,17 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "finances.db").build()
+    }
+}
+
+object Migrations {
+    /** v2: firstPeriod en transacciones y systemKey en categorías. */
+    class From1To2 : AutoMigrationSpec {
+        override fun onPostMigrate(db: SupportSQLiteDatabase) {
+            db.execSQL("UPDATE categories SET systemKey = '${SystemCategory.YIELD}' WHERE isIncome = 1 AND name = 'Rentabilidad'")
+            // Fija el primer periodo de las compras en cuotas ya registradas, para que no se corran al editarlas.
+            db.execSQL("UPDATE transactions SET firstPeriod = (SELECT MIN(period) FROM installments i WHERE i.transactionId = transactions.id) WHERE id IN (SELECT transactionId FROM installments)")
+        }
     }
 }
 
@@ -48,6 +63,6 @@ object DefaultCategories {
         CategoryEntity(name = "Sueldo", emoji = "💼", color = 0xFF00B894, isIncome = true, sortOrder = 0),
         CategoryEntity(name = "Ingreso extra", emoji = "💰", color = 0xFFFDCB6E, isIncome = true, sortOrder = 1),
         CategoryEntity(name = "Reembolso", emoji = "↩️", color = 0xFF74B9FF, isIncome = true, sortOrder = 2),
-        CategoryEntity(name = "Rentabilidad", emoji = "📈", color = 0xFF55EFC4, isIncome = true, sortOrder = 3),
+        CategoryEntity(name = "Rentabilidad", emoji = "📈", color = 0xFF55EFC4, isIncome = true, sortOrder = 3, systemKey = SystemCategory.YIELD),
     )
 }

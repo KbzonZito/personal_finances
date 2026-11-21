@@ -9,17 +9,17 @@ Marca con `[x]` lo que se vaya haciendo.
 
 Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo básico funcione en un teléfono de verdad.
 
-- [ ] **Migraciones de Room** (S). La base está en versión 1 y no tiene migraciones: el primer cambio de esquema haría que la app se cierre al abrir. Usar `AutoMigration` (el esquema ya se exporta en `app/schemas`) y agregar un test de migración.
-- [ ] **Clave de firma propia + releases en GitHub** (S). Hoy el APK de release usa la clave debug. Crear un keystore guardado como secreto de GitHub y publicar el APK en *Releases* en cada tag `v*`. Sin esto, cambiar de clave más adelante obliga a desinstalar y perder los datos.
-- [ ] **Bloqueo con huella o PIN** (S). `BiometricPrompt` al abrir la app o al volver después de N minutos, más `FLAG_SECURE` opcional para que no se vea en las apps recientes ni en capturas.
+- [x] **Migraciones de Room** (S). La base está en versión 1 y no tiene migraciones: el primer cambio de esquema haría que la app se cierre al abrir. Usar `AutoMigration` (el esquema ya se exporta en `app/schemas`) y agregar un test de migración.
+- [x] **Clave de firma propia + releases en GitHub** (S). *Listo el código; falta crear la clave y cargar los secretos (ver README).* Hoy el APK de release usa la clave debug. Crear un keystore guardado como secreto de GitHub y publicar el APK en *Releases* en cada tag `v*`. Sin esto, cambiar de clave más adelante obliga a desinstalar y perder los datos.
+- [x] **Bloqueo con huella o PIN** (S). `BiometricPrompt` al abrir la app o al volver después de N minutos, más `FLAG_SECURE` opcional para que no se vea en las apps recientes ni en capturas.
 - [ ] **Probar en un teléfono real** (M): notificaciones (Android 13–15), widget, tile, accesos directos, modo oscuro y tamaños de letra grandes.
 - [ ] **Ajustar el lector con notificaciones reales** (M). Juntar textos reales (anonimizados) de BancoEstado, Santander, BCI, Banco de Chile, Scotiabank, Itaú, Falabella, Tenpo, Mach, Mercado Pago y Google Wallet en `NotificationParserTest`.
 - [ ] **Bugs encontrados al revisar el código**:
-  - [ ] Editar una compra antigua ("ya pagué N cuotas") vuelve a calcular la primera cuota contando desde el mes actual, así que las cuotas se corren al editar en otro mes. Guardar el periodo de la primera cuota en la transacción.
-  - [ ] Eliminar una cuenta también borra las transferencias que *llegaron* desde otras cuentas, lo que cambia el saldo de esas otras cuentas. Mejor archivar por defecto, o convertir esas transferencias en gastos.
-  - [ ] Duplicados entre apps: si Google Wallet y el banco avisan la misma compra, hoy aparecen dos pendientes. Comparar entre todas las apps vigiladas (mismo monto en ±3 min).
-  - [ ] La categoría "Rentabilidad" se busca por su nombre; si el usuario la renombra, se pierde. Usar una marca fija (`systemKey`).
-  - [ ] La rentabilidad atrasada (días sin abrir la app) se calcula con el saldo actual, no con el saldo de cada día. Calcular con el saldo de cada día.
+  - [x] Editar una compra antigua ("ya pagué N cuotas") vuelve a calcular la primera cuota contando desde el mes actual, así que las cuotas se corren al editar en otro mes. Guardar el periodo de la primera cuota en la transacción.
+  - [x] Eliminar una cuenta también borra las transferencias que *llegaron* desde otras cuentas, lo que cambia el saldo de esas otras cuentas. Mejor archivar por defecto, o convertir esas transferencias en gastos.
+  - [x] Duplicados entre apps: si Google Wallet y el banco avisan la misma compra, hoy aparecen dos pendientes. Comparar entre todas las apps vigiladas (mismo monto en ±3 min).
+  - [x] La categoría "Rentabilidad" se busca por su nombre; si el usuario la renombra, se pierde. Usar una marca fija (`systemKey`).
+  - [x] La rentabilidad atrasada (días sin abrir la app) se calcula con el saldo actual, no con el saldo de cada día. Calcular con el saldo de cada día.
 
 ## Fase 1 — Tarjetas de crédito (lo que diferencia la app)
 

@@ -36,6 +36,8 @@ import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.Screenshot
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
@@ -91,6 +93,7 @@ import com.personalfinances.domain.Money
 import com.personalfinances.notifications.NotificationParser
 import com.personalfinances.notifications.PurchaseNotificationListener
 import com.personalfinances.ui.MainViewModel
+import com.personalfinances.ui.lock.AppLock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.DateFormat
@@ -110,6 +113,7 @@ fun SettingsScreen(
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::exportBackup) }
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::importBackup) }
     var confirmImport by remember { mutableStateOf(false) }
+    var noLockAvailable by remember { mutableStateOf(false) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
         item { Text("Ajustes", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.statusBarsPadding().padding(start = 20.dp, top = 16.dp, bottom = 8.dp)) }
@@ -119,6 +123,29 @@ fun SettingsScreen(
             SettingRow(Icons.Outlined.NotificationsActive, "Leer notificaciones de compras",
                 if (s.detectionEnabled) "Activado · ${s.watchedPackages.size} apps" else "Desactivado", onClick = onOpenNotifications)
         }
+
+        item { Group("Seguridad") }
+        item {
+            val activity = LocalContext.current as? androidx.fragment.app.FragmentActivity
+            SwitchSetting(Icons.Outlined.Fingerprint, "Bloquear con huella o PIN", "Se pide al abrir la app", s.lockEnabled) { enable ->
+                when {
+                    !enable -> vm.setLockEnabled(false)
+                    activity == null -> Unit
+                    !AppLock.canAuthenticate(activity) -> noLockAvailable = true
+                    // Confirmar identidad antes de activar, para no quedar bloqueado por error.
+                    else -> AppLock.authenticate(activity, "Activar bloqueo") { ok -> if (ok) vm.setLockEnabled(true) }
+                }
+            }
+        }
+        if (s.lockEnabled) item {
+            LazyRow(contentPadding = PaddingValues(start = 60.dp, end = 20.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(listOf(0, 1, 5, 15)) { m ->
+                    FilterChip(selected = s.lockTimeoutMinutes == m, onClick = { vm.setLockTimeout(m) },
+                        label = { Text(if (m == 0) "Siempre" else "Tras $m min") })
+                }
+            }
+        }
+        item { SwitchSetting(Icons.Outlined.Screenshot, "Proteger pantalla", "Oculta la app en recientes y bloquea capturas", s.secureScreen, vm::setSecureScreen) }
 
         item { Group("General") }
         item { SettingRow(Icons.Outlined.Payments, "Moneda principal", "${s.mainCurrency.flag} ${s.mainCurrency.displayName}") { showCurrency = true } }
@@ -167,6 +194,14 @@ fun SettingsScreen(
             title = { Text("Moneda principal") },
             text = { Column { Text("Se usa para el patrimonio total y los resúmenes.", style = MaterialTheme.typography.bodySmall); Spacer(Modifier.height(12.dp)); CurrencyDropdown(s.mainCurrency, Modifier.padding(0.dp)) { vm.setMainCurrency(it); showCurrency = false } } },
             confirmButton = { TextButton(onClick = { showCurrency = false }) { Text("Cerrar") } },
+        )
+    }
+    if (noLockAvailable) {
+        AlertDialog(
+            onDismissRequest = { noLockAvailable = false },
+            title = { Text("Sin bloqueo de pantalla") },
+            text = { Text("Para usar esta opción configura primero una huella, rostro, PIN o patrón en los ajustes de tu teléfono.") },
+            confirmButton = { TextButton(onClick = { noLockAvailable = false }) { Text("Entendido") } },
         )
     }
     if (showRates) RatesDialog(s.rates, s.ratesUpdatedAt, vm) { showRates = false }
@@ -490,7 +525,7 @@ fun CategoriesScreen(snapshot: FinanceSnapshot, vm: MainViewModel, onBack: () ->
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
                         Text("Es de ingreso", modifier = Modifier.weight(1f)); Switch(income, { income = it })
                     }
-                    if (cat.id != 0L) TextButton(onClick = { vm.saveCategory(cat.copy(archived = true)); editing = null }) { Text("Eliminar", color = MaterialTheme.colorScheme.error) }
+                    if (cat.id != 0L && cat.systemKey == null) TextButton(onClick = { vm.saveCategory(cat.copy(archived = true)); editing = null }) { Text("Eliminar", color = MaterialTheme.colorScheme.error) }
                 }
             },
             confirmButton = { TextButton(enabled = name.isNotBlank(), onClick = { vm.saveCategory(cat.copy(name = name.trim(), emoji = emoji.ifBlank { "🏷️" }, isIncome = income)); editing = null }) { Text("Guardar") } },

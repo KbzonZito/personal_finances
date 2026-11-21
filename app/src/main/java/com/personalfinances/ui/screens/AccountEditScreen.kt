@@ -215,7 +215,7 @@ fun AccountEditScreen(
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("¿Eliminar ${existing.name}?") },
-            text = { Text("Se eliminarán también todos sus movimientos. Si solo quieres ocultarla, usa Archivar.") },
+            text = { Text("Se eliminarán sus movimientos. Las transferencias con otras cuentas se conservan en esas cuentas como gastos o ingresos, así sus saldos no cambian. Si solo quieres ocultarla, usa Archivar.") },
             confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete(existing) }) { Text("Eliminar", color = MaterialTheme.colorScheme.error) } },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancelar") } },
         )

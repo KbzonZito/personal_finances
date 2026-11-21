@@ -42,7 +42,7 @@ class QuickAddWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val snap = withTimeoutOrNull(3_000) { context.container.repository.snapshot.first { it.loaded } }
         val total = snap?.let {
-            if (it.settings.hideAmounts) "•••••" else Money.format(it.netWorth, it.settings.mainCurrency)
+            if (it.settings.hideAmounts || it.settings.lockEnabled) "•••••" else Money.format(it.netWorth, it.settings.mainCurrency)
         } ?: "—"
         val pending = snap?.pending?.size ?: 0
         provideContent { GlanceTheme { Content(context, total, pending) } }

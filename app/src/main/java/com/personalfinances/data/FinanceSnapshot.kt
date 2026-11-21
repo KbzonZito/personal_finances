@@ -144,6 +144,17 @@ data class FinanceSnapshot(
 object Balances {
     data class Result(val balances: Map<Long, Long>, val cards: Map<Long, CardSummary>)
 
+    /** Efecto neto de un movimiento sobre el saldo de [accountId] (cuentas que no son tarjeta). */
+    fun effectOn(accountId: Long, t: TransactionEntity): Long {
+        var e = 0L
+        if (t.accountId == accountId) e += when (t.type) {
+            TxType.EXPENSE, TxType.TRANSFER -> -t.amount
+            TxType.INCOME, TxType.INTEREST, TxType.ADJUSTMENT -> t.amount
+        }
+        if (t.type == TxType.TRANSFER && t.toAccountId == accountId) e += t.toAmount ?: t.amount
+        return e
+    }
+
     fun compute(accounts: List<AccountEntity>, txs: List<TransactionEntity>, installments: List<InstallmentEntity>, today: LocalDate): Result {
         val bal = HashMap<Long, Long>()
         val credits = HashMap<Long, Long>()

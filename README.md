@@ -23,6 +23,7 @@ App Android de finanzas personales: minimalista, rápida y pensada para Chile (C
 - **Agregar rápido**: widget de pantalla de inicio, tile en ajustes rápidos, accesos directos del ícono (mantener presionado) y teclado numérico propio.
 - **Respaldo**: los datos viven solo en el teléfono (Room). Exportar/importar JSON (puedes guardarlo en Google Drive) + backup automático de Android.
 - Tasas USD/EUR/UF desde [mindicador.cl](https://mindicador.cl) (opcional) o manuales.
+- **Seguridad**: bloqueo con huella/rostro/PIN (inmediato o tras 1, 5 o 15 min en segundo plano) y protección de pantalla (oculta la app en recientes y bloquea capturas).
 - Tema claro/oscuro/Material You, ocultar montos.
 
 ## Stack
@@ -50,6 +51,22 @@ Requiere JDK 17+ y Android SDK (o abrir en Android Studio).
 ```
 
 GitHub Actions compila ambos APK en cada push (pestaña *Actions* → artefacto `apks`).
+
+## Releases firmados
+
+Una sola vez:
+
+1. Ejecuta `scripts/create-keystore.sh` en tu computador (necesita Java). Crea `finanzas-release.jks` y `keystore.properties`, ambos fuera de git.
+   **Guarda el `.jks` y la contraseña en un gestor de contraseñas**: si se pierden, las actualizaciones ya no se podrán instalar sobre la app.
+2. Carga los secretos `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS` y `SIGNING_KEY_PASSWORD` en *Settings → Secrets and variables → Actions*. El script lo hace solo si tienes `gh` instalado.
+
+Después, para publicar una versión, sube `versionCode`/`versionName` en `app/build.gradle.kts` y:
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+El workflow *Release* corre los tests, firma el APK, verifica que no sea la clave debug y lo publica en *Releases*.
 
 Las capturas de `docs/screenshots` se generan con `ScreenshotTest` (Robolectric) en `app/build/screenshots`.
 

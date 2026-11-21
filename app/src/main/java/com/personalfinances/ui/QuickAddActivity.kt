@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
+import com.personalfinances.ui.lock.LockGate
+import com.personalfinances.ui.lock.WindowSettingsEffect
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -27,7 +29,7 @@ import kotlinx.coroutines.launch
  * Actividad liviana para agregar un movimiento rápido desde el widget, el tile de ajustes rápidos,
  * los accesos directos del ícono o una notificación detectada. Se muestra como hoja inferior.
  */
-class QuickAddActivity : ComponentActivity() {
+class QuickAddActivity : FragmentActivity() {
     private val vm: MainViewModel by viewModels { MainViewModel.factory(container) }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -41,7 +43,9 @@ class QuickAddActivity : ComponentActivity() {
 
         setContent {
             val snapshot by vm.snapshot.collectAsStateWithLifecycle()
+            WindowSettingsEffect(this, snapshot.settings, snapshot.loaded)
             FinanceTheme(snapshot.settings.themeMode, snapshot.settings.dynamicColor) {
+              LockGate(this, snapshot.settings, snapshot.loaded) {
                 val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                 val scope = rememberCoroutineScope()
                 fun close() { scope.launch { sheetState.hide() }.invokeOnCompletion { finish() } }
@@ -65,6 +69,7 @@ class QuickAddActivity : ComponentActivity() {
                         onClose = ::close,
                     )
                 }
+              }
             }
         }
     }

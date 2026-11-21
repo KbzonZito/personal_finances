@@ -1,5 +1,6 @@
 package com.personalfinances.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -79,6 +80,8 @@ data class TransactionEntity(
     /** Meses de diferimiento de la primera cuota (0 = próximo estado de cuenta). */
     val deferMonths: Int = 0,
     val source: TxSource = TxSource.MANUAL,
+    /** yyyymm del estado de cuenta de la primera cuota (0 = no aplica). Fijo al editar. */
+    @ColumnInfo(defaultValue = "0") val firstPeriod: Int = 0,
 )
 
 @Serializable
@@ -113,7 +116,13 @@ data class CategoryEntity(
     val isIncome: Boolean = false,
     val sortOrder: Int = 0,
     val archived: Boolean = false,
+    /** Identificador estable para categorías que usa la app (ej. "yield"), independiente del nombre. */
+    val systemKey: String? = null,
 )
+
+object SystemCategory {
+    const val YIELD = "yield"
+}
 
 @Serializable
 enum class DetectionStatus { PENDING, CONFIRMED, DISMISSED }

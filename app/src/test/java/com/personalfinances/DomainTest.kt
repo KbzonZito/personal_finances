@@ -96,4 +96,11 @@ class DomainTest {
         assertEquals(200L, r[YearMonth.of(2025, 1)])
         assertEquals(200L, r[YearMonth.of(2025, 2)])
     }
+
+    @Test fun yieldWithFlowsUsesDailyBalance() {
+        val from = LocalDate.of(2025, 3, 1)
+        // 1M al cierre del 1/3; depósito de 1M el 3/3. Días 2 y 3 ganan sobre 1M, días 4 y 5 sobre ~2M.
+        val r = YieldAccrual.accrueWithFlows(1_000_000, 3.65, from, LocalDate.of(2025, 3, 5), mapOf(LocalDate.of(2025, 3, 3).toEpochDay() to 1_000_000L))
+        assertEquals(600L, r[YearMonth.of(2025, 3)])
+    }
 }

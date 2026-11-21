@@ -2,7 +2,9 @@ package com.personalfinances.ui
 
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
+import com.personalfinances.ui.lock.LockGate
+import com.personalfinances.ui.lock.WindowSettingsEffect
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -88,7 +90,7 @@ private val tabs = listOf(
     Tab("settings", "Ajustes", Icons.Outlined.Settings, Icons.Filled.Settings),
 )
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private val vm: MainViewModel by viewModels { MainViewModel.factory(container) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,8 +98,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val snapshot by vm.snapshot.collectAsStateWithLifecycle()
+            WindowSettingsEffect(this, snapshot.settings, snapshot.loaded)
             FinanceTheme(snapshot.settings.themeMode, snapshot.settings.dynamicColor) {
-                AppRoot(snapshot, vm)
+                LockGate(this, snapshot.settings, snapshot.loaded) { AppRoot(snapshot, vm) }
             }
         }
     }

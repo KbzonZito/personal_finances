@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,14 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
 }
+
+// Firma de release: desde variables de entorno (CI) o desde keystore.properties (local, no versionado).
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun signingValue(env: String, prop: String): String? = System.getenv(env) ?: keystoreProps.getProperty(prop)
+val releaseStoreFile = signingValue("SIGNING_STORE_FILE", "storeFile")?.let { rootProject.file(it) }?.takeIf { it.exists() }
 
 android {
     namespace = "com.personalfinances"
@@ -14,8 +24,19 @@ android {
         applicationId = "com.personalfinances"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
+    }
+
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = releaseStoreFile
+                storePassword = signingValue("SIGNING_STORE_PASSWORD", "storePassword")
+                keyAlias = signingValue("SIGNING_KEY_ALIAS", "keyAlias")
+                keyPassword = signingValue("SIGNING_KEY_PASSWORD", "keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -23,8 +44,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Firma con la clave debug para poder instalar el APK de release mientras no haya keystore propia.
-            signingConfig = signingConfigs.getByName("debug")
+            // Clave propia si está configurada; si no, la de debug (solo para pruebas locales).
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
         debug {
             applicationIdSuffix = ".debug"
@@ -39,6 +60,10 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    sourceSets {
+        // Los esquemas exportados de Room se usan en los tests de migración.
+        getByName("debug").assets.srcDir("$projectDir/schemas") // solo debug: tests de migración
     }
     testOptions {
         unitTests.isIncludeAndroidResources = true
@@ -69,9 +94,13 @@ dependencies {
     implementation(libs.glance.appwidget)
     implementation(libs.glance.material3)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.biometric)
+    implementation(libs.fragment.ktx)
+    implementation(libs.appcompat)
     debugImplementation(libs.compose.ui.tooling)
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
+    testImplementation(libs.room.testing)
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)

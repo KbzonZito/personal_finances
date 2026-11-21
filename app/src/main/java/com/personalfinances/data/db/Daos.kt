@@ -44,8 +44,16 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun delete(id: Long)
 
-    @Query("DELETE FROM transactions WHERE accountId = :accountId OR toAccountId = :accountId")
-    suspend fun deleteForAccount(accountId: Long)
+    /** Transferencias desde otra cuenta hacia la eliminada → gasto en la cuenta de origen. */
+    @Query("UPDATE transactions SET type = 'EXPENSE', toAccountId = NULL, toAmount = NULL, description = CASE WHEN description = '' THEN :label ELSE description END WHERE type = 'TRANSFER' AND toAccountId = :accountId AND accountId != :accountId")
+    suspend fun convertIncomingTransfers(accountId: Long, label: String)
+
+    /** Transferencias desde la eliminada hacia otra cuenta → ingreso en la cuenta de destino. */
+    @Query("UPDATE transactions SET type = 'INCOME', accountId = toAccountId, amount = COALESCE(toAmount, amount), toAccountId = NULL, toAmount = NULL, installmentCount = 1, description = CASE WHEN description = '' THEN :label ELSE description END WHERE type = 'TRANSFER' AND accountId = :accountId AND toAccountId IS NOT NULL AND toAccountId != :accountId")
+    suspend fun convertOutgoingTransfers(accountId: Long, label: String)
+
+    @Query("DELETE FROM transactions WHERE accountId = :accountId")
+    suspend fun deleteOwned(accountId: Long)
 }
 
 @Dao
@@ -60,6 +68,9 @@ interface InstallmentDao {
 
     @Query("DELETE FROM installments WHERE transactionId = :txId")
     suspend fun deleteForTransaction(txId: Long)
+
+    @Query("DELETE FROM installments WHERE accountId = :accountId")
+    suspend fun deleteForAccount(accountId: Long)
 }
 
 @Dao
@@ -72,6 +83,9 @@ interface CategoryDao {
 
     @Query("SELECT COUNT(*) FROM categories")
     suspend fun count(): Int
+
+    @Query("SELECT * FROM categories WHERE systemKey = :key LIMIT 1")
+    suspend fun bySystemKey(key: String): CategoryEntity?
 
     @Upsert suspend fun upsert(c: CategoryEntity): Long
     @Insert suspend fun insertAll(c: List<CategoryEntity>)
@@ -88,8 +102,9 @@ interface DetectionDao {
     @Query("SELECT * FROM detections WHERE id = :id")
     suspend fun get(id: Long): DetectionEntity?
 
-    @Query("SELECT COUNT(*) FROM detections WHERE packageName = :pkg AND amount = :amount AND postedAt > :since")
-    suspend fun countSimilar(pkg: String, amount: Long, since: Long): Int
+    /** Misma compra avisada por varias apps (ej. banco + Google Wallet) o notificación repetida. */
+    @Query("SELECT COUNT(*) FROM detections WHERE amount = :amount AND currencyCode = :currency AND isIncome = :isIncome AND postedAt BETWEEN :from AND :to")
+    suspend fun countSimilar(amount: Long, currency: String, isIncome: Boolean, from: Long, to: Long): Int
 
     @Insert suspend fun insert(d: DetectionEntity): Long
 
@@ -107,6 +122,9 @@ interface RuleDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun putSourceRule(rule: SourceRuleEntity)
+
+    @Query("DELETE FROM source_rules WHERE accountId = :accountId")
+    suspend fun deleteSourceRulesFor(accountId: Long)
 
     @Query("SELECT * FROM merchant_rules")
     suspend fun merchantRules(): List<MerchantRuleEntity>

@@ -42,6 +42,9 @@ class MainViewModel(private val c: AppContainer) : ViewModel() {
     fun setDetectionEnabled(v: Boolean) = io { c.settings.setDetectionEnabled(v) }
     fun setWatchedPackages(v: Set<String>) = io { c.settings.setWatchedPackages(v) }
     fun setRates(r: ExchangeRates) = io { c.settings.setRates(r) }
+    fun setLockEnabled(v: Boolean) = io { c.settings.setLockEnabled(v) }
+    fun setLockTimeout(minutes: Int) = io { c.settings.setLockTimeout(minutes) }
+    fun setSecureScreen(v: Boolean) = io { c.settings.setSecureScreen(v) }
 
     fun refreshRates() = viewModelScope.launch {
         runCatching { RatesFetcher.fetch(c.settings.current().rates) }
