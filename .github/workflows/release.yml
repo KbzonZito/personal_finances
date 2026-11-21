@@ -11,12 +11,18 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
+      # Robolectric descarga las bibliotecas de Android desde Maven Central en cada ejecución; se cachean
+      # para no depender de la red (una descarga fallida rompía los tests).
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
 
       - name: Decode keystore
         env:
@@ -29,7 +35,8 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 --decode > release.jks
 
       - name: Tests
-        run: ./gradlew :app:testDebugUnitTest
+        # Un reintento: los tests de Robolectric pueden fallar por una descarga de red.
+        run: ./gradlew :app:testDebugUnitTest || ./gradlew :app:testDebugUnitTest
 
       - name: Build signed APK
         env:
