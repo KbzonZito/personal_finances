@@ -32,6 +32,7 @@ class FinanceApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashLog.install(this)
         container = AppContainer(this)
         DetectionNotifier.createChannel(this)
         runCatching { DailyWorker.schedule(this) }

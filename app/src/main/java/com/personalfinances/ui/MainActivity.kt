@@ -84,6 +84,7 @@ import com.personalfinances.ui.screens.ReportsScreen
 import com.personalfinances.ui.screens.BudgetsScreen
 import com.personalfinances.ui.screens.GoalsScreen
 import com.personalfinances.ui.screens.PayCardSheet
+import com.personalfinances.ui.screens.TeachScreen
 import com.personalfinances.ui.screens.OnboardingScreen
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.personalfinances.ui.screens.SettingsScreen
@@ -129,6 +130,7 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
     val isTopLevel = tabs.any { it.route == route } || route == null
     var addRequest by remember { mutableStateOf<AddRequest?>(null) }
     var payCardId by remember { mutableStateOf<Long?>(null) }
+    val unrecognized by vm.unrecognized.collectAsStateWithLifecycle()
     val rootScope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -209,7 +211,8 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
             screen("goals") { GoalsScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
             screen("budgets") { BudgetsScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
             screen("settings") {
-                SettingsScreen(snapshot, vm, onOpenNotifications = { nav.navigate("notifications") }, onOpenCategories = { nav.navigate("categories") }, onOpenRecurring = { nav.navigate("recurring") }, onOpenBudgets = { nav.navigate("budgets") }, onOpenGoals = { nav.navigate("goals") }, contentPadding = pad)
+                SettingsScreen(snapshot, vm, onOpenNotifications = { nav.navigate("notifications") }, onOpenCategories = { nav.navigate("categories") }, onOpenRecurring = { nav.navigate("recurring") }, onOpenBudgets = { nav.navigate("budgets") }, onOpenGoals = { nav.navigate("goals") }, contentPadding = pad,
+                    unrecognizedCount = unrecognized.size, onOpenTeach = { nav.navigate("teach") })
             }
             screen("card/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 val id = e.arguments!!.getLong("id")
@@ -257,7 +260,11 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
                     onConfirm = { openAdd(AddRequest(detectionId = it)) },
                     onDismiss = { vm.dismissDetection(it); DetectionNotifier.cancel(context, it) })
             }
-            screen("notifications") { NotificationSetupScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
+            screen("notifications") { NotificationSetupScreen(snapshot, vm, onBack = { nav.popBackStack() }, unrecognizedCount = unrecognized.size, onOpenTeach = { nav.navigate("teach") }) }
+            screen("teach") {
+                TeachScreen(unrecognized, snapshot.settings.mainCurrency, onBack = { nav.popBackStack() },
+                    onTeach = { u, k, o, p, s -> vm.teach(u, k, o, p, s) }, onDismiss = vm::dismissUnrecognized)
+            }
             screen("categories") { CategoriesScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
             screen("recurring") { RecurringScreen(snapshot, vm, onBack = { nav.popBackStack() }) }
             screen("projection") { ProjectionScreen(snapshot, onBack = { nav.popBackStack() }, onOpenRecurring = { nav.navigate("recurring") }) }

@@ -84,8 +84,33 @@ object DetectionNotifier {
             .addAction(0, "Registrar", open)
             .addAction(0, "Ignorar", dismiss)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setGroup(GROUP)
             .build()
         NotificationManagerCompat.from(context).notify(d.id.toInt(), n)
+        postSummary(context)
+    }
+
+    private const val GROUP = "detections_group"
+    private const val SUMMARY_ID = 1
+
+    /** Con 2+ movimientos por confirmar, se agrupan bajo un resumen. */
+    private fun postSummary(context: Context) {
+        val nm = context.getSystemService(NotificationManager::class.java)
+        val count = nm.activeNotifications.count { it.notification.group == GROUP && it.id != SUMMARY_ID }
+        if (count < 2) return
+        val open = PendingIntent.getActivity(
+            context, SUMMARY_ID, Intent(context, com.personalfinances.ui.MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val summary = NotificationCompat.Builder(context, CHANNEL)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("$count movimientos por confirmar")
+            .setContentIntent(open)
+            .setGroup(GROUP)
+            .setGroupSummary(true)
+            .setAutoCancel(true)
+            .build()
+        NotificationManagerCompat.from(context).notify(SUMMARY_ID, summary)
     }
 
     fun cancel(context: Context, id: Long) = NotificationManagerCompat.from(context).cancel(id.toInt())

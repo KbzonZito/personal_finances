@@ -34,6 +34,8 @@ App Android de finanzas personales: minimalista, rápida y pensada para Chile (C
 - **Deslizar** un movimiento para eliminarlo (con "Deshacer") o duplicarlo. Widget de **tarjetas** con cupo y próximo pago.
 - **Cuadrar tarjeta con el banco**: al crearla (o cuando quieras) ingresas cupo disponible, facturado y periodo actual, y la app crea los ajustes para quedar igual que el banco sin cargar compras antiguas.
 - **Pago de tarjeta en un paso**: facturado, deuda total u otro monto; desde la cuenta que elijas (recuerda la habitual); descuenta del banco y devuelve el cupo.
+- **Enséñale al lector**: las notificaciones con montos que no entendió quedan en una lista; le muestras el monto, el comercio y el tipo (o "ignorar siempre") y aprende ese formato. También detecta transferencias y pagos de tarjeta.
+- **Diagnóstico**: registro local de errores para compartir (nada se envía solo).
 - **Recordatorios de tarjetas**: 3 días antes del vencimiento, el día del vencimiento y el día de cierre (nunca de noche).
 - **Agregar rápido**: widget de pantalla de inicio, tile en ajustes rápidos, accesos directos del ícono (mantener presionado) y teclado numérico propio.
 - **Respaldo**: los datos viven solo en el teléfono (Room). Respaldo automático semanal a una carpeta que elijas (guarda los últimos 6), exportar/importar JSON manual y backup automático de Android.
@@ -66,7 +68,7 @@ Requiere JDK 17+ y Android SDK (o abrir en Android Studio).
 ./gradlew :app:testDebugUnitTest      # tests de dominio, parser y capturas (Robolectric)
 ```
 
-GitHub Actions compila ambos APK en cada push (pestaña *Actions* → artefacto `apks`).
+GitHub Actions compila ambos APK en cada push (pestaña *Actions* → artefacto `apks`) y ejecuta tests en un emulador Android (workflow *UI tests*). Lista de prueba manual: [docs/QA.md](docs/QA.md).
 
 ## Releases firmados
 
@@ -76,7 +78,7 @@ Usa los mismos secretos que tus otras apps, o crea una clave nueva. Una sola vez
    **Guarda el `.jks` y la contraseña en un gestor de contraseñas**: si se pierden, las actualizaciones ya no se podrán instalar sobre la app.
 2. Carga los secretos `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD` y `KEY_ALIAS` (opcional `KEY_PASSWORD` si la clave tiene otra contraseña) en *Settings → Secrets and variables → Actions*. El script lo hace solo si tienes `gh` instalado.
 
-Después, para publicar una versión, sube `versionCode`/`versionName` en `app/build.gradle.kts` y:
+Después, para publicar una versión basta subir `versionCode`/`versionName` en `app/build.gradle.kts` en `main`: el workflow crea el tag y el release solo. También funciona crear el tag a mano:
 
 ```bash
 git tag v0.2.0 && git push origin v0.2.0

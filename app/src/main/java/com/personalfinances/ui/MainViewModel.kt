@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class MainViewModel(private val c: AppContainer) : ViewModel() {
@@ -78,6 +79,22 @@ class MainViewModel(private val c: AppContainer) : ViewModel() {
     fun setBudgetAlerts(v: Boolean) = io { c.settings.setBudgetAlerts(v) }
     fun saveBudget(categoryId: Long, amount: Long) = io { c.repository.saveBudget(com.personalfinances.data.db.BudgetEntity(categoryId, amount)) }
     fun deleteBudget(categoryId: Long) = io { c.repository.deleteBudget(categoryId) }
+    val unrecognized = c.repository.unrecognized.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptyList())
+
+    fun teach(u: com.personalfinances.data.db.UnrecognizedEntity, kind: String, ordinal: Int, prefix: String?, suffix: String?) = io {
+        val created = c.repository.teach(u, kind, ordinal, prefix, suffix)
+        created.forEach { com.personalfinances.notifications.DetectionNotifier.show(appContext, it) }
+        _messages.tryEmit(
+            when {
+                kind == "IGNORE" -> "Listo: no te avisaré de este tipo de notificación"
+                created.isEmpty() -> "Aprendido ✓"
+                else -> "Aprendido ✓ ${created.size} movimiento(s) listos para confirmar"
+            }
+        )
+    }
+
+    fun dismissUnrecognized(id: Long) = io { c.repository.dismissUnrecognized(id) }
+
     fun saveGoal(g: com.personalfinances.data.db.GoalEntity) = io { c.repository.saveGoal(g) }
     fun deleteGoal(id: Long) = io { c.repository.deleteGoal(id) }
     fun finishOnboarding() = io { c.settings.setOnboardingDone() }

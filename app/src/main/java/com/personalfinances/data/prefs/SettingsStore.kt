@@ -91,6 +91,9 @@ class SettingsStore(private val context: Context) {
 
     suspend fun current(): Settings = settings.first()
 
+    /** Solo para tests: vuelve a los ajustes de fábrica. */
+    suspend fun clearAll() = context.dataStore.edit { it.clear() }
+
     suspend fun setMainCurrency(c: Currency) = context.dataStore.edit { it[K.currency] = c.code }
     suspend fun setTheme(t: ThemeMode) = context.dataStore.edit { it[K.theme] = t.name }
     suspend fun setDynamicColor(v: Boolean) = context.dataStore.edit { it[K.dynamic] = v }

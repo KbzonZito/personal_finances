@@ -75,6 +75,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -236,6 +237,21 @@ fun AddTransactionContent(
             description = template.description
             epochDay = Instant.ofEpochMilli(det.postedAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay()
             amountText = minorToKeypad(template.amount, accounts.firstOrNull { it.id == template.accountId }?.currency ?: det.currency)
+            return@LaunchedEffect
+        }
+        if (det != null && (det.txKind == "TRANSFER" || det.txKind == "CARD_PAYMENT")) {
+            detection = det
+            type = TxType.TRANSFER
+            description = det.merchant.orEmpty()
+            epochDay = Instant.ofEpochMilli(det.postedAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay()
+            val liquid = accounts.filter { it.type.isLiquid }
+            accountId = repo.suggestAccount(det.packageName, null, "DEBIT")?.takeIf { id -> liquid.any { it.id == id } } ?: liquid.firstOrNull()?.id
+            if (det.txKind == "CARD_PAYMENT") {
+                val cards = accounts.filter { it.type.isCard }
+                toAccountId = det.lastDigits?.let { d -> cards.firstOrNull { d in it.digitsList }?.id } ?: cards.singleOrNull()?.id
+            }
+            val c = accounts.firstOrNull { it.id == accountId }?.currency ?: det.currency
+            amountText = minorToKeypad(snapshot.settings.rates.convert(det.amount, det.currency, c), c)
             return@LaunchedEffect
         }
         if (det != null) {
@@ -732,6 +748,7 @@ private fun Keypad(decimals: Int, onKey: (String) -> Unit, onClear: () -> Unit) 
                     )
                     Box(
                         Modifier.weight(1f).height(52.dp).clip(RoundedCornerShape(16.dp)).background(bg)
+                            .testTag("key_$key")
                             .combinedClickable(
                                 interactionSource = interaction, indication = null,
                                 onClick = { onKey(key) },

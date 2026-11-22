@@ -29,10 +29,21 @@ class PurchaseNotificationListener : NotificationListenerService() {
         scope.launch {
             val settings = container.settings.current()
             if (!settings.detectionEnabled || sbn.packageName !in settings.watchedPackages) return@launch
-            val parsed = NotificationParser.parse(sbn.packageName, title, text, settings.mainCurrency) ?: return@launch
+            val repo = container.repository
+            val rules = repo.parserRules()
             val label = runCatching {
                 packageManager.getApplicationLabel(packageManager.getApplicationInfo(sbn.packageName, 0)).toString()
             }.getOrDefault(sbn.packageName)
+            if (NotificationParser.applyRules(sbn.packageName, title, text, rules, settings.mainCurrency) == RuleOutcome.Ignore) return@launch
+            val parsed = NotificationParser.parse(sbn.packageName, title, text, settings.mainCurrency, rules)
+            if (parsed == null) {
+                // Tiene montos pero no se entendió: queda para "Enséñale al lector".
+                val full = NotificationParser.fullText(title, text)
+                if (NotificationParser.amounts(full, settings.mainCurrency).isNotEmpty()) {
+                    repo.addUnrecognized(sbn.packageName, label, title.orEmpty(), text.orEmpty(), sbn.postTime)
+                }
+                return@launch
+            }
             val detection = DetectionEntity(
                 packageName = sbn.packageName,
                 appLabel = label,
@@ -44,6 +55,7 @@ class PurchaseNotificationListener : NotificationListenerService() {
                 isIncome = parsed.isIncome,
                 lastDigits = parsed.lastDigits,
                 cardKind = parsed.cardKind?.name,
+                txKind = parsed.kind.name,
                 postedAt = sbn.postTime,
             )
             val id = container.repository.addDetection(detection) ?: return@launch

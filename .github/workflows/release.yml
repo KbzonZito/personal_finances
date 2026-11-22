@@ -1,8 +1,12 @@
 name: Release
 
+# Se publica al crear un tag v* o, automáticamente, cuando cambia versionName en main.
 on:
   push:
     tags: ["v*"]
+    branches: [main]
+    paths: ["app/build.gradle.kts"]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -12,19 +16,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Versión
+        id: v
+        run: |
+          V=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          TAG="v$V"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_REF_TYPE" = "branch" ] && git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null; then
+            echo "Ya existe $TAG: no se publica de nuevo"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-java@v5
+        if: steps.v.outputs.skip != 'true'
         with:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
+        if: steps.v.outputs.skip != 'true'
       # Robolectric descarga las bibliotecas de Android desde Maven Central en cada ejecución; se cachean
       # para no depender de la red (una descarga fallida rompía los tests).
       - uses: actions/cache@v4
+        if: steps.v.outputs.skip != 'true'
         with:
           path: ~/.m2/repository/org/robolectric
           key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
 
       - name: Decode keystore
+        if: steps.v.outputs.skip != 'true'
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
@@ -35,10 +55,12 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 --decode > release.jks
 
       - name: Tests
+        if: steps.v.outputs.skip != 'true'
         # Un reintento: los tests de Robolectric pueden fallar por una descarga de red.
         run: ./gradlew :app:testDebugUnitTest || ./gradlew :app:testDebugUnitTest
 
       - name: Build signed APK
+        if: steps.v.outputs.skip != 'true'
         env:
           SIGNING_STORE_FILE: release.jks
           SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -47,15 +69,20 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.KEYSTORE_PASSWORD }}
         run: |
           ./gradlew :app:assembleRelease
-          cp app/build/outputs/apk/release/app-release.apk "finanzas-${GITHUB_REF_NAME}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "finanzas-${{ steps.v.outputs.tag }}.apk"
 
       - name: Verify signature is not the debug key
+        if: steps.v.outputs.skip != 'true'
         run: |
           APKSIGNER=$(ls $ANDROID_HOME/build-tools/*/apksigner | tail -1)
-          $APKSIGNER verify --print-certs "finanzas-${GITHUB_REF_NAME}.apk" | tee certs.txt
+          $APKSIGNER verify --print-certs "finanzas-${{ steps.v.outputs.tag }}.apk" | tee certs.txt
           if grep -q "CN=Android Debug" certs.txt; then echo "::error::APK firmado con clave debug"; exit 1; fi
 
       - uses: softprops/action-gh-release@v2
+        if: steps.v.outputs.skip != 'true'
         with:
-          files: finanzas-${{ github.ref_name }}.apk
+          tag_name: ${{ steps.v.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Finanzas ${{ steps.v.outputs.tag }}
+          files: finanzas-${{ steps.v.outputs.tag }}.apk
           generate_release_notes: true

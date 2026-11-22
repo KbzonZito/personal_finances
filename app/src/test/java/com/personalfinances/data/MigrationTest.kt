@@ -80,4 +80,12 @@ class MigrationTest {
             it.moveToFirst(); assertEquals(0L, it.getLong(0)); assertEquals(0, it.getInt(1)); assertEquals(0, it.getInt(2))
         }
     }
+
+    @Test fun migrate7To8_learningTables() {
+        helper.createDatabase("m78.db", 7).close()
+        val db = helper.runMigrationsAndValidate("m78.db", 8, true)
+        db.execSQL("INSERT INTO parser_rules (packageName, signature, kind, amountOrdinal, merchantPrefix, merchantSuffix) VALUES ('a', 'b c d', 'IGNORE', 0, NULL, NULL)")
+        db.query("SELECT COUNT(*) FROM parser_rules").use { it.moveToFirst(); assertEquals(1, it.getInt(0)) }
+        db.query("SELECT COUNT(*) FROM unrecognized").use { it.moveToFirst(); assertEquals(0, it.getInt(0)) }
+    }
 }

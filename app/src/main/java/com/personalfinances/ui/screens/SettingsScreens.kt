@@ -39,6 +39,11 @@ import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.Savings
+import androidx.compose.material.icons.outlined.School
+import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.NotificationImportant
 import androidx.compose.material.icons.outlined.Backup
@@ -115,6 +120,8 @@ fun SettingsScreen(
     onOpenBudgets: () -> Unit,
     onOpenGoals: () -> Unit,
     contentPadding: PaddingValues,
+    unrecognizedCount: Int = 0,
+    onOpenTeach: () -> Unit = {},
 ) {
     val s = snapshot.settings
     val context = LocalContext.current
@@ -157,6 +164,10 @@ fun SettingsScreen(
             }
         }
         item { SwitchSetting(Icons.Outlined.Screenshot, "Proteger pantalla", "Oculta la app en recientes y bloquea capturas", s.secureScreen, vm::setSecureScreen) }
+
+        if (unrecognizedCount > 0) item {
+            SettingRow(Icons.Outlined.School, "Enséñale al lector", "$unrecognizedCount notificaciones no reconocidas", onClick = onOpenTeach)
+        }
 
         item { Group("General") }
         item { SettingRow(Icons.Outlined.Payments, "Moneda principal", "${s.mainCurrency.flag} ${s.mainCurrency.displayName}") { showCurrency = true } }
@@ -211,6 +222,31 @@ fun SettingsScreen(
         }
         item { SettingRow(Icons.Outlined.CloudUpload, "Exportar respaldo", "Guarda un archivo .json (puedes elegir Google Drive)") { exporter.launch("finanzas-${java.time.LocalDate.now()}.json") } }
         item { SettingRow(Icons.Outlined.CloudDownload, "Restaurar respaldo", "Reemplaza todos los datos actuales") { confirmImport = true } }
+
+        item { Group("Diagnóstico") }
+        item {
+            var showLog by remember { mutableStateOf(false) }
+            val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "" }
+            SettingRow(Icons.Outlined.BugReport, "Registro de errores", "Versión $version") { showLog = true }
+            if (showLog) {
+                var log by remember { mutableStateOf(com.personalfinances.CrashLog.read(context)) }
+                AlertDialog(
+                    onDismissRequest = { showLog = false },
+                    title = { Text("Registro de errores") },
+                    text = {
+                        Text(log?.takeLast(3_000) ?: "Sin errores registrados ✓", style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()))
+                    },
+                    confirmButton = {
+                        if (log != null) TextButton(onClick = {
+                            val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, "Finanzas v$version · errores").putExtra(Intent.EXTRA_TEXT, log)
+                            context.startActivity(Intent.createChooser(send, "Compartir registro"))
+                        }) { Text("Compartir") } else TextButton(onClick = { showLog = false }) { Text("Cerrar") }
+                    },
+                    dismissButton = { if (log != null) TextButton(onClick = { com.personalfinances.CrashLog.clear(context); log = null }) { Text("Borrar") } },
+                )
+            }
+        }
 
         item { Group("Privacidad") }
         item {
@@ -339,7 +375,7 @@ private fun isListenerEnabled(context: Context): Boolean {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationSetupScreen(snapshot: FinanceSnapshot, vm: MainViewModel, onBack: () -> Unit) {
+fun NotificationSetupScreen(snapshot: FinanceSnapshot, vm: MainViewModel, onBack: () -> Unit, unrecognizedCount: Int = 0, onOpenTeach: () -> Unit = {}) {
     val context = LocalContext.current
     val s = snapshot.settings
     var listenerOn by remember { mutableStateOf(isListenerEnabled(context)) }
@@ -397,6 +433,13 @@ fun NotificationSetupScreen(snapshot: FinanceSnapshot, vm: MainViewModel, onBack
                 Row(Modifier.fillMaxWidth().clickable { if (s.detectionEnabled) vm.setDetectionEnabled(false) else showConsent = true }.padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("Activar detección", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                     Switch(s.detectionEnabled, { if (it) showConsent = true else vm.setDetectionEnabled(false) })
+                }
+            }
+            if (s.detectionEnabled && unrecognizedCount > 0) item {
+                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.large,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp).clickable(onClick = onOpenTeach)) {
+                    Text("🎓 $unrecognizedCount notificaciones no reconocidas · enséñale al lector", style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(16.dp))
                 }
             }
             if (s.detectionEnabled) {

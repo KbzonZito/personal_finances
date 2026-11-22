@@ -116,6 +116,13 @@ interface DetectionDao {
 
     @Query("DELETE FROM detections WHERE status != 'PENDING' AND postedAt < :before")
     suspend fun purgeOld(before: Long)
+
+    /** Pendientes muy antiguos se descartan solos. */
+    @Query("UPDATE detections SET status = 'DISMISSED' WHERE status = 'PENDING' AND postedAt < :before")
+    suspend fun expirePending(before: Long): Int
+
+    @Query("SELECT COUNT(*) FROM detections WHERE status = 'PENDING'")
+    suspend fun pendingCount(): Int
 }
 
 @Dao
@@ -191,6 +198,30 @@ interface GoalDao {
 
     @Query("UPDATE goals SET accountId = NULL WHERE accountId = :accountId")
     suspend fun unlinkAccount(accountId: Long)
+}
+
+@Dao
+interface LearningDao {
+    @Query("SELECT * FROM parser_rules")
+    suspend fun rules(): List<ParserRuleEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putRule(r: ParserRuleEntity)
+
+    @Query("SELECT * FROM unrecognized ORDER BY postedAt DESC")
+    fun observeUnrecognized(): Flow<List<UnrecognizedEntity>>
+
+    @Insert suspend fun insertUnrecognized(u: UnrecognizedEntity): Long
+
+    @Query("DELETE FROM unrecognized WHERE id = :id")
+    suspend fun deleteUnrecognized(id: Long)
+
+    /** Conserva solo las últimas 30. */
+    @Query("DELETE FROM unrecognized WHERE id NOT IN (SELECT id FROM unrecognized ORDER BY postedAt DESC LIMIT 30)")
+    suspend fun trimUnrecognized()
+
+    @Query("DELETE FROM unrecognized WHERE packageName = :pkg AND text = :text")
+    suspend fun deleteSame(pkg: String, text: String)
 }
 
 @Dao

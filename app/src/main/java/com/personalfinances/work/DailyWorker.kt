@@ -38,6 +38,7 @@ class DailyWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
         suspend fun runDaily(context: Context, c: AppContainer) {
             val repo = c.repository
             runCatching { repo.accrueYield() }
+            runCatching { repo.expireOldPending() }
             runCatching { repo.processRecurring().forEach { DetectionNotifier.show(context, it) } }
             runCatching { sendReminders(context, c) }
             runCatching {

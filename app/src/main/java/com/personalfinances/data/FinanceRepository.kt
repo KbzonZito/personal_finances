@@ -13,6 +13,9 @@ import com.personalfinances.data.db.SourceRuleEntity
 import com.personalfinances.data.db.RecurringEntity
 import com.personalfinances.data.db.BudgetEntity
 import com.personalfinances.data.db.GoalEntity
+import com.personalfinances.data.db.ParserRuleEntity
+import com.personalfinances.data.db.UnrecognizedEntity
+import kotlinx.coroutines.flow.first
 import com.personalfinances.domain.Frequency
 import com.personalfinances.domain.Recurrence
 import com.personalfinances.data.db.SystemCategory
@@ -248,6 +251,52 @@ class FinanceRepository(
     }
 
     suspend fun dismissDetection(id: Long) = db.detections().setStatus(id, DetectionStatus.DISMISSED)
+
+    suspend fun expireOldPending(days: Int = 30): Int =
+        db.detections().expirePending(System.currentTimeMillis() - days * 24L * 3600_000)
+
+    suspend fun pendingCount() = db.detections().pendingCount()
+
+    // ---------- Enséñale al lector ----------
+
+    val unrecognized = db.learning().observeUnrecognized()
+
+    suspend fun parserRules() = db.learning().rules()
+
+    suspend fun addUnrecognized(pkg: String, label: String, title: String, text: String, postedAt: Long) {
+        db.learning().deleteSame(pkg, text)
+        db.learning().insertUnrecognized(UnrecognizedEntity(packageName = pkg, appLabel = label, title = title, text = text, postedAt = postedAt))
+        db.learning().trimUnrecognized()
+    }
+
+    suspend fun dismissUnrecognized(id: Long) = db.learning().deleteUnrecognized(id)
+
+    /**
+     * Guarda una regla enseñada desde una notificación no reconocida y vuelve a leer todas las
+     * pendientes del mismo tipo. Devuelve las detecciones creadas (para notificar).
+     */
+    suspend fun teach(u: UnrecognizedEntity, kind: String, amountOrdinal: Int, merchantPrefix: String?, merchantSuffix: String?): List<DetectionEntity> {
+        val sig = com.personalfinances.notifications.NotificationParser.signature(com.personalfinances.notifications.NotificationParser.fullText(u.title, u.text))
+        db.learning().putRule(ParserRuleEntity(packageName = u.packageName, signature = sig, kind = kind, amountOrdinal = amountOrdinal, merchantPrefix = merchantPrefix, merchantSuffix = merchantSuffix))
+        val rules = db.learning().rules()
+        val currency = settingsStore.current().mainCurrency
+        val created = mutableListOf<DetectionEntity>()
+        val same = db.learning().observeUnrecognized().first().filter {
+            it.packageName == u.packageName && com.personalfinances.notifications.NotificationParser.signature(com.personalfinances.notifications.NotificationParser.fullText(it.title, it.text)) == sig
+        }
+        for (item in same) {
+            db.learning().deleteUnrecognized(item.id)
+            if (kind == "IGNORE") continue
+            val p = com.personalfinances.notifications.NotificationParser.parse(item.packageName, item.title, item.text, currency, rules) ?: continue
+            val d = DetectionEntity(
+                packageName = item.packageName, appLabel = item.appLabel, title = item.title, text = item.text, amount = p.amount,
+                currencyCode = p.currency.code, merchant = p.merchant, isIncome = p.isIncome, lastDigits = p.lastDigits,
+                postedAt = item.postedAt, cardKind = p.cardKind?.name, txKind = p.kind.name,
+            )
+            addDetection(d)?.let { created += d.copy(id = it) }
+        }
+        return created
+    }
 
     /** Cuenta sugerida para una notificación según lo aprendido o los últimos dígitos. */
     suspend fun suggestAccount(packageName: String, lastDigits: String?, cardKind: String? = null): Long? =

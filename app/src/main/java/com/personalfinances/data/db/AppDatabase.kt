@@ -12,9 +12,9 @@ import androidx.room.TypeConverters
 @Database(
     entities = [
         AccountEntity::class, TransactionEntity::class, InstallmentEntity::class, CategoryEntity::class,
-        DetectionEntity::class, SourceRuleEntity::class, MerchantRuleEntity::class, RecurringEntity::class, BudgetEntity::class, GoalEntity::class,
+        DetectionEntity::class, SourceRuleEntity::class, MerchantRuleEntity::class, RecurringEntity::class, BudgetEntity::class, GoalEntity::class, ParserRuleEntity::class, UnrecognizedEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.From1To2::class),
@@ -23,6 +23,7 @@ import androidx.room.TypeConverters
         AutoMigration(from = 4, to = 5),
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 6, to = 7),
+        AutoMigration(from = 7, to = 8),
     ],
 )
 @TypeConverters(Converters::class)
@@ -36,6 +37,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun recurring(): RecurringDao
     abstract fun budgets(): BudgetDao
     abstract fun goals(): GoalDao
+    abstract fun learning(): LearningDao
     abstract fun maintenance(): MaintenanceDao
 
     companion object {

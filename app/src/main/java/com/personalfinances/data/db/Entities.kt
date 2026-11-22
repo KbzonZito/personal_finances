@@ -168,6 +168,8 @@ data class DetectionEntity(
     val recurringId: Long? = null,
     /** CREDIT / DEBIT si la notificación lo indicaba. */
     val cardKind: String? = null,
+    /** EXPENSE / INCOME / TRANSFER / CARD_PAYMENT según el texto. */
+    val txKind: String? = null,
 ) {
     val currency: Currency get() = Currency.fromCode(currencyCode)
 }
@@ -236,3 +238,31 @@ data class GoalEntity(
 ) {
     val currency: Currency get() = Currency.fromCode(currencyCode)
 }
+
+/**
+ * Regla enseñada por el usuario para una app: en notificaciones que empiezan igual ([signature]),
+ * el monto es el n-ésimo monto del texto y el comercio va entre [merchantPrefix] y [merchantSuffix].
+ * kind: EXPENSE, INCOME, TRANSFER o IGNORE (no avisar nunca este tipo de notificación).
+ */
+@Serializable
+@Entity(tableName = "parser_rules", indices = [Index(value = ["packageName", "signature"], unique = true)])
+data class ParserRuleEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val packageName: String,
+    val signature: String,
+    val kind: String,
+    val amountOrdinal: Int = 0,
+    val merchantPrefix: String? = null,
+    val merchantSuffix: String? = null,
+)
+
+/** Notificaciones con montos que el lector no entendió (para "Enséñale al lector"). */
+@Entity(tableName = "unrecognized")
+data class UnrecognizedEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val packageName: String,
+    val appLabel: String,
+    val title: String,
+    val text: String,
+    val postedAt: Long,
+)

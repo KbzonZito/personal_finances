@@ -12,7 +12,7 @@ Esfuerzo: **S** (horas) · **M** (1–2 días) · **L** (varios días). Cada fas
 
 ---
 
-## Fase 1 — v0.9 · Estabilidad y pruebas reales ⭐
+## Fase 1 — v0.9 · Estabilidad y pruebas reales ⭐ (implementada; falta tu prueba en el teléfono y tus textos de notificaciones)
 
 Objetivo: tener la certeza de que la app funciona en un teléfono y de que los datos nunca se descuadran.
 

@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -152,5 +153,25 @@ class RepositoryTest {
         assertEquals(0, db.transactions().getAll().size)
         repo.restore(deleted)
         assertEquals(pay, db.transactions().getAll().single().id)
+    }
+
+    @Test fun teachingParsesPendingUnrecognizedOfSameKind() = runBlocking {
+        val now = System.currentTimeMillis()
+        repo.addUnrecognized("cl.raro", "Raro", "Movimiento", "Se registró $12.990 para LA FERIA hoy", now)
+        repo.addUnrecognized("cl.raro", "Raro", "Movimiento", "Se registró $4.500 para DON PEPE hoy", now + 600_000)
+        repo.addUnrecognized("cl.raro", "Raro", "Otra cosa", "Saldo disponible $100.000", now)
+        val first = repo.unrecognized.first().first { it.text.contains("12.990") }
+        val created = repo.teach(first, "EXPENSE", 0, "para", "hoy")
+        assertEquals(setOf(12_990L, 4_500L), created.map { it.amount }.toSet())
+        assertEquals(setOf("LA FERIA", "DON PEPE"), created.map { it.merchant }.toSet())
+        assertEquals(1, repo.unrecognized.first().size) // queda solo la de "Saldo disponible"
+    }
+
+    @Test fun oldPendingDetectionsExpire() = runBlocking {
+        val old = System.currentTimeMillis() - 40L * 24 * 3600_000
+        repo.addDetection(DetectionEntity(packageName = "a", appLabel = "a", title = "", text = "", amount = 1, currencyCode = "CLP", merchant = null, isIncome = false, lastDigits = null, postedAt = old))
+        repo.addDetection(DetectionEntity(packageName = "a", appLabel = "a", title = "", text = "", amount = 2, currencyCode = "CLP", merchant = null, isIncome = false, lastDigits = null, postedAt = System.currentTimeMillis()))
+        assertEquals(1, repo.expireOldPending())
+        assertEquals(1, repo.pendingCount())
     }
 }
