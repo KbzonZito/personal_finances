@@ -256,6 +256,58 @@ class FinanceRepository(
             cardKind?.let { runCatching { com.personalfinances.notifications.CardKind.valueOf(it) }.getOrNull() },
         )
 
+    // ---------- Cuadrar tarjeta con el banco ----------
+
+    /**
+     * Ajusta la tarjeta para que coincida con lo que informa el banco, sin cargar compras antiguas.
+     * @param available cupo disponible según el banco.
+     * @param billed monto facturado pendiente de pago (último estado de cuenta).
+     * @param nextStatement lo acumulado en el periodo actual (próximo estado), si se conoce.
+     * Crea movimientos de ajuste (con cuotas) en el periodo cerrado, el abierto y, si sobra, el siguiente
+     * (cuotas futuras). Devuelve cuántos ajustes creó.
+     */
+    suspend fun reconcileCard(cardId: Long, available: Long, billed: Long, nextStatement: Long?, today: LocalDate = LocalDate.now()): Int {
+        val card = db.accounts().get(cardId)?.takeIf { it.type.isCard } ?: return 0
+        val current = Balances.compute(db.accounts().getAll(), db.transactions().getAll(), db.installments().getAll(), today).cards[cardId] ?: return 0
+        val targetUsed = card.creditLimit - available
+        val closed = card.cycle.lastClosedPeriod(today)
+        val open = card.cycle.openPeriod(today)
+
+        val dBilled = billed - current.billedDue
+        val dOpen = nextStatement?.let { it - current.openPeriodAmount } ?: 0L
+        val dRest = targetUsed - (current.used + dBilled + dOpen)
+        // Sin "próximo estado", la diferencia de cupo va al periodo abierto; con él, lo que sobra son cuotas futuras.
+        val adjustments = listOf(
+            closed to dBilled,
+            open to (if (nextStatement == null) dRest else dOpen),
+            open.plusMonths(1) to (if (nextStatement == null) 0L else dRest),
+        ).filter { it.second != 0L }
+
+        db.withTransaction {
+            for ((period, amount) in adjustments) {
+                val label = when (period) {
+                    closed -> "Ajuste: facturado según el banco"
+                    open -> "Ajuste: periodo actual según el banco"
+                    else -> "Ajuste: cuotas futuras según el banco"
+                }
+                val txId = db.transactions().insert(
+                    TransactionEntity(
+                        type = TxType.ADJUSTMENT, accountId = cardId, amount = -amount, epochDay = today.toEpochDay(),
+                        description = label, source = TxSource.MANUAL, firstPeriod = period.toPeriod(),
+                    )
+                )
+                db.installments().insertAll(listOf(InstallmentEntity(transactionId = txId, accountId = cardId, number = 1, period = period.toPeriod(), amount = amount, principal = amount)))
+            }
+        }
+        if (adjustments.isNotEmpty()) onDataChanged()
+        return adjustments.size
+    }
+
+    /** Cuenta desde la que se suele pagar esta tarjeta (la más usada en pagos anteriores). */
+    suspend fun usualPaymentSource(cardId: Long): Long? =
+        db.transactions().getAll().filter { it.type == TxType.TRANSFER && it.toAccountId == cardId }
+            .groupingBy { it.accountId }.eachCount().maxByOrNull { it.value }?.key
+
     // ---------- Metas ----------
 
     suspend fun saveGoal(g: GoalEntity) = db.goals().upsert(g)

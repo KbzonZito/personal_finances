@@ -49,6 +49,17 @@ class MainViewModel(private val c: AppContainer) : ViewModel() {
         if (kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { showUndo() }) c.repository.restore(deleted)
     }
     fun saveAccount(a: AccountEntity) = io { c.repository.saveAccount(a) }
+
+    /** Guarda la tarjeta y, si se ingresó su estado actual, la cuadra con el banco. */
+    fun saveCard(a: AccountEntity, available: Long?, billed: Long?, next: Long?) = io {
+        val id = c.repository.saveAccount(a)
+        if (available != null) c.repository.reconcileCard(id, available, billed ?: 0, next)
+    }
+
+    fun reconcileCard(cardId: Long, available: Long, billed: Long, next: Long?) = io {
+        val n = c.repository.reconcileCard(cardId, available, billed, next)
+        _messages.tryEmit(if (n == 0) "Ya estaba cuadrada con tu banco" else "Tarjeta cuadrada con tu banco ✓")
+    }
     fun deleteAccount(a: AccountEntity) = io { c.repository.deleteAccount(a) }
     fun saveCategory(cat: CategoryEntity) = io { c.repository.saveCategory(cat) }
     fun dismissDetection(id: Long) = io { c.repository.dismissDetection(id) }

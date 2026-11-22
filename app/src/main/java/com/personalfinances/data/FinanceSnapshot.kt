@@ -235,7 +235,8 @@ object Balances {
                 TxType.EXPENSE -> if (ok(t.accountId, t)) bal.merge(t.accountId, -t.amount, Long::plus)
                 TxType.INCOME, TxType.INTEREST, TxType.ADJUSTMENT -> if (ok(t.accountId, t)) {
                     bal.merge(t.accountId, t.amount, Long::plus)
-                    if (t.accountId in cardIds) credits.merge(t.accountId, t.amount, Long::plus)
+                    // En tarjetas, los ajustes se representan con cuotas (ver reconcileCard), no como abonos.
+                    if (t.accountId in cardIds && t.type != TxType.ADJUSTMENT) credits.merge(t.accountId, t.amount, Long::plus)
                 }
                 TxType.TRANSFER -> {
                     if (ok(t.accountId, t)) bal.merge(t.accountId, -t.amount, Long::plus)

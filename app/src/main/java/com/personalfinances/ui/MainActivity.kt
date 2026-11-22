@@ -83,6 +83,7 @@ import com.personalfinances.ui.screens.ProjectionScreen
 import com.personalfinances.ui.screens.ReportsScreen
 import com.personalfinances.ui.screens.BudgetsScreen
 import com.personalfinances.ui.screens.GoalsScreen
+import com.personalfinances.ui.screens.PayCardSheet
 import com.personalfinances.ui.screens.OnboardingScreen
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.personalfinances.ui.screens.SettingsScreen
@@ -127,6 +128,8 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
     val route = backStack?.destination?.route
     val isTopLevel = tabs.any { it.route == route } || route == null
     var addRequest by remember { mutableStateOf<AddRequest?>(null) }
+    var payCardId by remember { mutableStateOf<Long?>(null) }
+    val rootScope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -179,7 +182,7 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
                     onOpenPending = { nav.navigate("pending") },
                     onOpenTransactions = { nav.navigateTab("transactions") },
                     onOpenTransaction = openTx,
-                    onPayCard = { st -> openAdd(AddRequest(type = TxType.TRANSFER, toAccountId = st.account.id, amount = st.card?.billedDue)) },
+                    onPayCard = { st -> payCardId = st.account.id },
                     onOpenRecurring = { nav.navigate("recurring") },
                     onOpenProjection = { nav.navigate("projection") },
                     onOpenBudgets = { nav.navigate("budgets") },
@@ -214,9 +217,10 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
                     snapshot, id,
                     onBack = { nav.popBackStack() },
                     onEdit = { nav.navigate("accountEdit?id=$id") },
-                    onPay = { st -> openAdd(AddRequest(type = TxType.TRANSFER, toAccountId = st.account.id, amount = st.card?.billedDue?.takeIf { it > 0 })) },
+                    onPay = { st -> payCardId = st.account.id },
                     onAddExpense = { st -> openAdd(AddRequest(type = TxType.EXPENSE, accountId = st.account.id)) },
                     onOpenTransaction = openTx,
+                    onReconcile = { av, billed, next -> vm.reconcileCard(id, av, billed, next) },
                 )
             }
             screen("account/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
@@ -244,6 +248,7 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
                     snapshot, id, preset,
                     onBack = { nav.popBackStack() },
                     onSave = { vm.saveAccount(it); nav.popBackStack() },
+                    onSaveCard = { a, av, billed, next -> vm.saveCard(a, av, billed, next); nav.popBackStack() },
                     onDelete = { vm.deleteAccount(it); nav.popBackStack("home", inclusive = false) },
                 )
             }
@@ -272,6 +277,18 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
     }
     AnimatedVisibility(onboarding == true, enter = fadeIn(), exit = fadeOut() + slideOutVertically { -it / 8 }) {
         OnboardingScreen(snapshot, vm, onSetupNotifications = { nav.navigate("notifications") })
+    }
+
+    payCardId?.let { cardId ->
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val scope = rememberCoroutineScope()
+        ModalBottomSheet(onDismissRequest = { payCardId = null }, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
+            PayCardSheet(snapshot, cardId) { draft ->
+                vm.saveTransaction(draft)
+                scope.launch { sheetState.hide() }.invokeOnCompletion { payCardId = null }
+                rootScope.launch { snackbar.showSnackbar("Pago registrado ✓ Cupo devuelto a la tarjeta") }
+            }
+        }
     }
 
     addRequest?.let { req ->

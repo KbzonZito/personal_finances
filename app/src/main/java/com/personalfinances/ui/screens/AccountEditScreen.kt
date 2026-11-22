@@ -82,6 +82,8 @@ fun AccountEditScreen(
     onBack: () -> Unit,
     onSave: (AccountEntity) -> Unit,
     onDelete: (AccountEntity) -> Unit,
+    /** Tarjeta nueva con su estado actual: cupo disponible, facturado y periodo actual (opcionales). */
+    onSaveCard: (AccountEntity, Long?, Long?, Long?) -> Unit = { a, _, _, _ -> onSave(a) },
 ) {
     val existing = accountId?.let { snapshot.account(it)?.account }
     var loaded by rememberSaveable { mutableStateOf(false) }
@@ -101,6 +103,9 @@ fun AccountEditScreen(
     var loadedBalanceText by rememberSaveable { mutableStateOf("") }
     var paidThrough by rememberSaveable { mutableStateOf<Int?>(null) }
     var loanInstallment by rememberSaveable { mutableStateOf("") }
+    var cardAvailable by rememberSaveable { mutableStateOf("") }
+    var cardBilled by rememberSaveable { mutableStateOf("") }
+    var cardNext by rememberSaveable { mutableStateOf("") }
     var loanTotal by rememberSaveable { mutableStateOf("") }
     var loanPaid by rememberSaveable { mutableStateOf("") }
 
@@ -168,12 +173,20 @@ fun AccountEditScreen(
     )
     }
 
+    fun save() {
+        val a = build()
+        val available = cardAvailable.takeIf { it.isNotBlank() }?.let { Money.parse(it, currency) }
+        if (a.type.isCard && existing == null && available != null) {
+            onSaveCard(a, available, Money.parse(cardBilled, currency) ?: 0, cardNext.takeIf { it.isNotBlank() }?.let { Money.parse(it, currency) })
+        } else onSave(a)
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(if (existing == null) "Nueva cuenta" else "Editar cuenta", style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Volver") } },
-                actions = { TextButton(enabled = valid, onClick = { onSave(build()) }) { Text("Guardar") } },
+                actions = { TextButton(enabled = valid, onClick = { save() }) { Text("Guardar") } },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
@@ -235,6 +248,17 @@ fun AccountEditScreen(
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
                     )
+                    if (existing == null) {
+                        Label("¿Cómo está hoy tu tarjeta? (opcional, míralo en la app del banco)")
+                        Field(cardAvailable, { cardAvailable = it }, "Cupo disponible", KeyboardType.Decimal, prefix = currency.symbol)
+                        Field(cardBilled, { cardBilled = it }, "Facturado por pagar (último estado de cuenta)", KeyboardType.Decimal, prefix = currency.symbol)
+                        Field(cardNext, { cardNext = it }, "Llevas en el periodo actual (no facturado)", KeyboardType.Decimal, prefix = currency.symbol)
+                        Text(
+                            "Con esto la app queda igual que tu banco sin cargar compras antiguas. Lo que falte para cuadrar el cupo se toma como cuotas futuras. Puedes volver a cuadrarla cuando quieras desde la tarjeta.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
+                        )
+                    }
                     Label("Último estado de cuenta que ya pagaste")
                     val options = listOf(lastClosed, lastClosed.minusMonths(1), lastClosed.minusMonths(2)).map { it.toPeriod() } + 0
                     LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -289,7 +313,7 @@ fun AccountEditScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
                 ) { Text("Eliminar cuenta", color = MaterialTheme.colorScheme.error) }
             }
-            Button(onClick = { onSave(build()) }, enabled = valid, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp).height(52.dp)) {
+            Button(onClick = { save() }, enabled = valid, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp).height(52.dp)) {
                 Text("Guardar")
             }
         }

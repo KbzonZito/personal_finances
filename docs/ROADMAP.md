@@ -28,7 +28,7 @@ Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo bá
 - [ ] **Prepago de cuotas** (S): pagar por adelantado el saldo pendiente de una compra.
 - [ ] **Pago mínimo y deuda rotativa** (M): si pagas menos del total, estimar el interés del saldo que queda con la tasa rotativa de la tarjeta.
 - [ ] **Comisión de mantención y cargos fijos** (S), cobrados automáticamente cada periodo.
-- [ ] **Cuadrar con el estado de cuenta** (S): "el banco dice que debo $X" crea un ajuste con la diferencia.
+- [x] **Cuadrar con el estado de cuenta** (S): "el banco dice que debo $X" crea un ajuste con la diferencia.
 - [ ] **Simulador** (S): "si compro $X en N cuotas, ¿cómo quedan mi cupo y mis próximos meses?" antes de comprar.
 - [ ] **Avance en efectivo / súper avance en cuotas** (S): ya funciona como transferencia desde la tarjeta; falta permitir cuotas e interés.
 - [ ] Importar el estado de cuenta en PDF, leído en el teléfono (L, más adelante).

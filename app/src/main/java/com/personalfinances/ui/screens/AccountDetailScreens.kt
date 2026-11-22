@@ -87,6 +87,7 @@ fun CardDetailScreen(
     onPay: (AccountState) -> Unit,
     onAddExpense: (AccountState) -> Unit,
     onOpenTransaction: (Long) -> Unit,
+    onReconcile: (available: Long, billed: Long, next: Long?) -> Unit = { _, _, _ -> },
 ) {
     val st = snapshot.account(cardId) ?: return
     val c = st.card ?: return
@@ -95,6 +96,38 @@ fun CardDetailScreen(
     val fc = LocalFinanceColors.current
     val purchases = remember(snapshot, cardId) { snapshot.activePurchases(cardId) }
     val txs = remember(snapshot, cardId) { snapshot.transactions.filter { it.tx.accountId == cardId || it.tx.toAccountId == cardId } }
+    var reconciling by remember { mutableStateOf(false) }
+    if (reconciling) {
+        val cur = a.currency
+        fun f(v: Long) = cur.toMajor(v).toPlainString().replace('.', ',')
+        var avail by remember { mutableStateOf(f(c.available)) }
+        var billed by remember { mutableStateOf(f(c.billedDue)) }
+        var next by remember { mutableStateOf(f(c.openPeriodAmount)) }
+        AlertDialog(
+            onDismissRequest = { reconciling = false },
+            title = { Text("Cuadrar con tu banco") },
+            text = {
+                Column {
+                    Text("Copia los montos que ves en la app de tu banco. La app crea ajustes para quedar igual.", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(8.dp))
+                    listOf(Triple("Cupo disponible", avail) { v: String -> avail = v }, Triple("Facturado por pagar", billed) { v: String -> billed = v },
+                        Triple("Periodo actual (no facturado)", next) { v: String -> next = v }).forEach { (label, value, set) ->
+                        OutlinedTextField(value, { v -> set(v.filter { ch -> ch.isDigit() || ch == ',' || ch == '.' }) }, label = { Text(label) },
+                            prefix = { Text(cur.symbol) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.padding(vertical = 2.dp))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val av = Money.parse(avail, cur)
+                    if (av != null) onReconcile(av, Money.parse(billed, cur) ?: 0, next.takeIf { it.isNotBlank() }?.let { Money.parse(it, cur) })
+                    reconciling = false
+                }) { Text("Cuadrar") }
+            },
+            dismissButton = { TextButton(onClick = { reconciling = false }) { Text("Cancelar") } },
+        )
+    }
 
     DetailScaffold(a.name, onBack, onEdit) { padding ->
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
@@ -134,6 +167,9 @@ fun CardDetailScreen(
                 Row(Modifier.padding(horizontal = 20.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     FilledTonalButton(onClick = { onAddExpense(st) }, modifier = Modifier.weight(1f)) { Text("Nueva compra") }
                     FilledTonalButton(onClick = { onPay(st) }, modifier = Modifier.weight(1f)) { Text("Abonar") }
+                }
+                androidx.compose.material3.TextButton(onClick = { reconciling = true }, modifier = Modifier.padding(horizontal = 12.dp)) {
+                    Text("¿No coincide con tu banco? Cuadrar tarjeta")
                 }
             }
             item { SectionHeader("Próximos estados de cuenta", Modifier.padding(top = 12.dp)) }

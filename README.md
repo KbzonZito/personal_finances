@@ -32,6 +32,8 @@ App Android de finanzas personales: minimalista, rápida y pensada para Chile (C
 - **Créditos de consumo e hipotecarios** (también en UF): deuda calculada con el sistema francés, cuotas pagadas, intereses por pagar y fecha del último pago; la deuda en UF se valoriza en pesos con la UF del día. Botón "Pagar cuota".
 - **Reconoce débito vs. crédito**: usa las palabras de la notificación ("crédito", "débito", "cuenta corriente"…), los últimos dígitos (varios por cuenta: tarjeta física, virtual, débito) y lo que aprendió de tus confirmaciones.
 - **Deslizar** un movimiento para eliminarlo (con "Deshacer") o duplicarlo. Widget de **tarjetas** con cupo y próximo pago.
+- **Cuadrar tarjeta con el banco**: al crearla (o cuando quieras) ingresas cupo disponible, facturado y periodo actual, y la app crea los ajustes para quedar igual que el banco sin cargar compras antiguas.
+- **Pago de tarjeta en un paso**: facturado, deuda total u otro monto; desde la cuenta que elijas (recuerda la habitual); descuenta del banco y devuelve el cupo.
 - **Recordatorios de tarjetas**: 3 días antes del vencimiento, el día del vencimiento y el día de cierre (nunca de noche).
 - **Agregar rápido**: widget de pantalla de inicio, tile en ajustes rápidos, accesos directos del ícono (mantener presionado) y teclado numérico propio.
 - **Respaldo**: los datos viven solo en el teléfono (Room). Respaldo automático semanal a una carpeta que elijas (guarda los últimos 6), exportar/importar JSON manual y backup automático de Android.

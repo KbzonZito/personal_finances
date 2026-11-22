@@ -123,6 +123,7 @@ class ScreenshotTest {
     @Test fun reports_dark() = shot("reports_dark", true) { com.personalfinances.ui.screens.ReportsScreen(it, noop, PaddingValues()) }
     @Test fun goals_dark() = shot("goals_dark", true) { com.personalfinances.ui.screens.GoalsScreen(it, MainViewModel((org.robolectric.RuntimeEnvironment.getApplication() as com.personalfinances.FinanceApp).container), noop) }
     @Test fun loan_dark() = shot("loan_dark", true) { com.personalfinances.ui.screens.AccountDetailScreen(it, 5, noop, noop, {}, {}, {}) }
+    @Test fun pay_card_dark() = shot("pay_card_dark", true) { com.personalfinances.ui.screens.PayCardSheet(it, 3) {} }
     @Test fun cards_dark() = shot("cards_dark", true) { CardsScreen(it, {}, noop, PaddingValues()) }
     @Test fun card_detail_dark() = shot("card_detail_dark", true) { CardDetailScreen(it, 3, noop, noop, {}, {}, {}) }
     @Test fun transactions_light() = shot("transactions_light", false) { TransactionsScreen(it, {}, PaddingValues()) }
