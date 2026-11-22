@@ -3,6 +3,8 @@
     <string name="tile_label">Nuevo gasto</string>
     <string name="widget_label">Finanzas rápido</string>
     <string name="widget_description">Patrimonio y botones para agregar gastos o ingresos</string>
+    <string name="cards_widget_label">Tarjetas</string>
+    <string name="cards_widget_description">Cupo disponible y próximo pago de tus tarjetas</string>
     <string name="shortcut_expense">Nuevo gasto</string>
     <string name="shortcut_income">Nuevo ingreso</string>
 </resources>

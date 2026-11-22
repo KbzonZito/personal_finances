@@ -187,7 +187,18 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
                     contentPadding = pad,
                 )
             }
-            screen("transactions") { TransactionsScreen(snapshot, openTx, pad) }
+            screen("transactions") {
+                TransactionsScreen(
+                    snapshot, openTx, pad,
+                    onDelete = { id ->
+                        vm.deleteWithUndo(id) {
+                            snackbar.showSnackbar("Movimiento eliminado", actionLabel = "Deshacer", duration = androidx.compose.material3.SnackbarDuration.Short) ==
+                                androidx.compose.material3.SnackbarResult.ActionPerformed
+                        }
+                    },
+                    onDuplicate = { id -> openAdd(AddRequest(duplicateOf = id)) },
+                )
+            }
             screen("cards") {
                 CardsScreen(snapshot, onOpenCard = { nav.navigate("card/${it.account.id}") }, onNewCard = { nav.navigate("accountEdit?type=CREDIT_CARD") }, contentPadding = pad)
             }
@@ -217,6 +228,7 @@ private fun AppRoot(snapshot: FinanceSnapshot, vm: MainViewModel) {
                     onTransfer = { st -> openAdd(AddRequest(type = TxType.TRANSFER, accountId = st.account.id)) },
                     onAdjust = { vm.saveTransaction(it) },
                     onOpenTransaction = openTx,
+                    onPayLoan = { st -> openAdd(AddRequest(type = TxType.TRANSFER, toAccountId = st.account.id, amount = st.loan?.installment, amountCurrency = st.account.currency)) },
                 )
             }
             screen(

@@ -270,6 +270,11 @@ fun AccountCard(st: AccountState, hidden: Boolean, modifier: Modifier = Modifier
                         AnimatedAmount(st.card.available, a.currency, MaterialTheme.typography.titleLarge, color = Color.White, hidden = hidden)
                         Spacer(Modifier.height(6.dp))
                         ProgressPill(st.card.usedFraction, color = Color.White, track = Color.White.copy(alpha = 0.25f), height = 5)
+                    } else if (st.loan != null) {
+                        Text("Deuda · ${st.loan.paid}/${st.loan.total} cuotas", color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.labelSmall)
+                        AnimatedAmount(st.loan.principal, a.currency, MaterialTheme.typography.titleLarge, color = Color.White, hidden = hidden)
+                        Spacer(Modifier.height(6.dp))
+                        ProgressPill(st.loan.fraction, color = Color.White, track = Color.White.copy(alpha = 0.25f), height = 5)
                     } else {
                         if (a.annualRate > 0 && !hidden) {
                             Text("+${Money.format(st.monthlyYield, a.currency)}/mes", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.labelSmall)

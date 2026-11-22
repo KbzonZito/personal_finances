@@ -101,7 +101,7 @@ fun CardVisual(st: AccountState, hidden: Boolean, modifier: Modifier = Modifier,
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(a.name, color = Color.White, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    a.lastDigits?.takeIf { it.isNotBlank() }?.let { Text("•••• $it", color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.labelLarge) }
+                    a.digitsList.firstOrNull()?.let { Text("•••• $it", color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.labelLarge) }
                 }
                 if (c != null) Column {
                     Text("Cupo disponible", color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)

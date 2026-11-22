@@ -24,7 +24,7 @@ object ProjectionBuilder {
     fun build(s: FinanceSnapshot, months: Int = 6, today: LocalDate = s.today): ProjectionView {
         val main = s.settings.mainCurrency
         val rates = s.settings.rates
-        val liquid = s.activeAccounts.filter { it.account.includeInTotal && !it.account.type.isCard }
+        val liquid = s.activeAccounts.filter { it.account.includeInTotal && it.account.type.isLiquid }
         val liquidIds = liquid.map { it.account.id }.toSet()
         val cards = s.cards.filter { it.account.includeInTotal }
         val cardIds = cards.map { it.account.id }.toSet()

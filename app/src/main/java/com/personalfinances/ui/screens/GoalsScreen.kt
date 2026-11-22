@@ -172,7 +172,7 @@ private fun GoalDialog(g: GoalEntity, snapshot: FinanceSnapshot, onDismiss: () -
     var deadlineMonths by remember {
         mutableStateOf(g.deadlineEpochDay?.let { java.time.temporal.ChronoUnit.MONTHS.between(snapshot.today, LocalDate.ofEpochDay(it)).toInt().coerceAtLeast(1) })
     }
-    val savings = snapshot.activeAccounts.filter { !it.account.type.isCard }
+    val savings = snapshot.activeAccounts.filter { it.account.type.isLiquid }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (g.id == 0L) "Nueva meta" else "Editar meta") },

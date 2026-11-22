@@ -57,6 +57,8 @@ class ScreenshotTest {
             AccountEntity(2, "Tenpo", AccountType.YIELD, initialBalance = 3_400_000, color = 0xFF00B894, annualRate = 4.8),
             AccountEntity(3, "Visa Signature", AccountType.CREDIT_CARD, creditLimit = 2_000_000, closingDay = 20, dueDay = 5, color = 0xFF6C5CE7, lastDigits = "4321"),
             AccountEntity(4, "Ahorro USD", AccountType.SAVINGS, currencyCode = "USD", initialBalance = 250_000, color = 0xFF2D3436),
+            AccountEntity(5, "Hipotecario", AccountType.LOAN, currencyCode = "UF", color = 0xFF8E44AD, annualRate = 4.2, dueDay = 5,
+                loanInstallment = 18_50, loanTotalInstallments = 240, loanPaidInstallments = 37),
         )
         val card = accounts[2]
         val txs = mutableListOf<TransactionEntity>()
@@ -120,6 +122,7 @@ class ScreenshotTest {
     @Test fun projection_dark() = shot("projection_dark", true) { com.personalfinances.ui.screens.ProjectionScreen(it, noop, noop) }
     @Test fun reports_dark() = shot("reports_dark", true) { com.personalfinances.ui.screens.ReportsScreen(it, noop, PaddingValues()) }
     @Test fun goals_dark() = shot("goals_dark", true) { com.personalfinances.ui.screens.GoalsScreen(it, MainViewModel((org.robolectric.RuntimeEnvironment.getApplication() as com.personalfinances.FinanceApp).container), noop) }
+    @Test fun loan_dark() = shot("loan_dark", true) { com.personalfinances.ui.screens.AccountDetailScreen(it, 5, noop, noop, {}, {}, {}) }
     @Test fun cards_dark() = shot("cards_dark", true) { CardsScreen(it, {}, noop, PaddingValues()) }
     @Test fun card_detail_dark() = shot("card_detail_dark", true) { CardDetailScreen(it, 3, noop, noop, {}, {}, {}) }
     @Test fun transactions_light() = shot("transactions_light", false) { TransactionsScreen(it, {}, PaddingValues()) }

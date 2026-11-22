@@ -19,7 +19,10 @@ class AppContainer(context: Context) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val db = AppDatabase.build(context)
     val settings = SettingsStore(context)
-    val repository = FinanceRepository(db, settings, scope) { QuickAddWidget.refresh(context) }
+    val repository = FinanceRepository(db, settings, scope) {
+        QuickAddWidget.refresh(context)
+        com.personalfinances.widget.CardsWidget.refresh(context)
+    }
     val backup = BackupManager(context, db)
 }
 

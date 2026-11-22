@@ -69,4 +69,15 @@ class MigrationTest {
         db.execSQL("INSERT INTO goals (name, emoji, target, currencyCode, accountId, manualSaved, deadlineEpochDay, color, createdAt) VALUES ('Viaje', '✈️', 1000, 'CLP', NULL, 0, NULL, 0, 0)")
         db.query("SELECT COUNT(*) FROM goals").use { it.moveToFirst(); assertEquals(1, it.getInt(0)) }
     }
+
+    @Test fun migrate6To7_loanAndCardKindColumns() {
+        helper.createDatabase("m67.db", 6).apply {
+            execSQL("INSERT INTO accounts (id, name, type, currencyCode, initialBalance, color, creditLimit, closingDay, dueDay, annualRate, lastAccrualEpochDay, lastDigits, archived, includeInTotal, sortOrder, balanceAnchorAt, paidThroughPeriod) VALUES (1, 'Corriente', 'CHECKING', 'CLP', 0, 0, 0, 20, 5, 0.0, 0, NULL, 0, 1, 0, 0, 0)")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate("m67.db", 7, true)
+        db.query("SELECT loanInstallment, loanTotalInstallments, loanPaidInstallments FROM accounts WHERE id = 1").use {
+            it.moveToFirst(); assertEquals(0L, it.getLong(0)); assertEquals(0, it.getInt(1)); assertEquals(0, it.getInt(2))
+        }
+    }
 }

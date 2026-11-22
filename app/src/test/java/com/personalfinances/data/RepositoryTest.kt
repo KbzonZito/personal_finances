@@ -137,4 +137,20 @@ class RepositoryTest {
         // Volver a procesar no duplica.
         assertEquals(0, repo.processRecurring(today).size)
     }
+
+    @Test fun loanPaymentsCountAsInstallmentsAndUndoRestores() = runBlocking {
+        val checking = repo.saveAccount(AccountEntity(name = "Corriente", type = AccountType.CHECKING, initialBalance = 2_000_000))
+        val loan = repo.saveAccount(AccountEntity(name = "Consumo", type = AccountType.LOAN, loanInstallment = 100_000, loanTotalInstallments = 12, loanPaidInstallments = 2, dueDay = 5))
+        val pay = repo.save(TransactionDraft(type = TxType.TRANSFER, accountId = checking, toAccountId = loan, amount = 100_000, date = today))
+        val snap = FinanceSnapshot.build(com.personalfinances.data.prefs.Settings(), db.accounts().getAll(), emptyList(), db.transactions().getAll(), db.installments().getAll(), emptyList(), today = today)
+        val st = snap.account(loan)!!
+        assertEquals(3, st.loan!!.paid)
+        assertEquals(-900_000L, st.balance)
+        assertEquals(1_900_000L, snap.account(checking)!!.balance)
+
+        val deleted = repo.deleteForUndo(pay)!!
+        assertEquals(0, db.transactions().getAll().size)
+        repo.restore(deleted)
+        assertEquals(pay, db.transactions().getAll().single().id)
+    }
 }

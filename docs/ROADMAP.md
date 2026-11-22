@@ -50,8 +50,8 @@ Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo bá
 - [ ] **Registro automático opcional para comercios de confianza** (S), con aviso y "Deshacer".
 - [ ] **Dividir un gasto** entre categorías, y **gastos compartidos** ("me deben $X") (M).
 - [ ] **Foto de la boleta** adjunta al movimiento (S).
-- [ ] Más widgets (M): botón 1×1 de "+ gasto", resumen de una tarjeta (cupo y próximo pago), presupuesto del mes.
-- [ ] Deslizar un movimiento para borrarlo o duplicarlo, con "Deshacer" (S).
+- [~] Más widgets (M) — v0.7: widget de tarjetas: botón 1×1 de "+ gasto", resumen de una tarjeta (cupo y próximo pago), presupuesto del mes.
+- [x] Deslizar un movimiento para borrarlo o duplicarlo, con "Deshacer" (S).
 
 ## Fase 3 — Entender en qué se va la plata
 
@@ -66,7 +66,7 @@ Antes de cargar datos reales, hay que asegurar que nunca se pierdan y que lo bá
 ## Fase 4 — Más tipos de cuentas para Chile
 
 - [x] **UF automática** (S): actualizar USD/EUR/UF una vez al día con WorkManager en vez de solo con el botón.
-- [ ] **Créditos de consumo e hipotecarios** (M): tabla de pagos, dividendo en UF, cuotas pendientes y cuánto falta.
+- [x] **Créditos de consumo e hipotecarios** (M): tabla de pagos, dividendo en UF, cuotas pendientes y cuánto falta.
 - [ ] **Historial de tasas** de cuentas remuneradas (S): cuando Tenpo cambia la tasa, que los cálculos pasados no cambien.
 - [ ] **Inversiones** (L): fondos mutuos, APV, acciones o cripto con valor manual; investigar la API pública de Fintual.
 

@@ -42,6 +42,12 @@ class MainViewModel(private val c: AppContainer) : ViewModel() {
         }
     }
     fun deleteTransaction(id: Long) = io { c.repository.deleteTransaction(id) }
+
+    /** Borra y ofrece deshacer en el snackbar. */
+    fun deleteWithUndo(id: Long, showUndo: suspend () -> Boolean) = c.scope.launch {
+        val deleted = c.repository.deleteForUndo(id) ?: return@launch
+        if (kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { showUndo() }) c.repository.restore(deleted)
+    }
     fun saveAccount(a: AccountEntity) = io { c.repository.saveAccount(a) }
     fun deleteAccount(a: AccountEntity) = io { c.repository.deleteAccount(a) }
     fun saveCategory(cat: CategoryEntity) = io { c.repository.saveCategory(cat) }

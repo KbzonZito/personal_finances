@@ -186,6 +186,7 @@ fun AccountDetailScreen(
     onTransfer: (AccountState) -> Unit,
     onAdjust: (TransactionDraft) -> Unit,
     onOpenTransaction: (Long) -> Unit,
+    onPayLoan: (AccountState) -> Unit = {},
 ) {
     val st = snapshot.account(accountId) ?: return
     val a = st.account
@@ -207,7 +208,39 @@ fun AccountDetailScreen(
                     AnimatedAmount(st.balance, a.currency, MaterialTheme.typography.displaySmall, hidden = hidden)
                 }
             }
-            if (a.type == AccountType.YIELD || a.annualRate > 0) {
+            st.loan?.let { loan ->
+                item {
+                    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+                        Column(Modifier.padding(18.dp)) {
+                            Text("${loan.paid} de ${loan.total} cuotas pagadas", style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.height(8.dp))
+                            ProgressPill(loan.fraction, height = 8)
+                            Spacer(Modifier.height(12.dp))
+                            Row {
+                                YieldLikeStat("Valor cuota", loan.installment, st, hidden, Modifier.weight(1f))
+                                YieldLikeStat("Falta pagar", loan.remainingToPay, st, hidden, Modifier.weight(1f))
+                                YieldLikeStat("Intereses por pagar", loan.remainingInterest, st, hidden, Modifier.weight(1f))
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            val fmt = DateTimeFormatter.ofPattern("d MMM yyyy", esCL)
+                            Text(
+                                if (loan.nextPayment == null) "¡Crédito pagado! 🎉"
+                                else "Próximo pago: ${loan.nextPayment.format(fmt)} · último: ${loan.lastPayment?.format(fmt)}",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (a.currency != snapshot.settings.mainCurrency && !hidden) {
+                                Text("Deuda en ${snapshot.settings.mainCurrency.code}: ${Money.format(snapshot.settings.rates.convert(loan.principal, a.currency, snapshot.settings.mainCurrency), snapshot.settings.mainCurrency)}",
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            if (loan.nextPayment != null) {
+                                Spacer(Modifier.height(10.dp))
+                                Button(onClick = { onPayLoan(st) }, modifier = Modifier.fillMaxWidth()) { Text("Pagar cuota") }
+                            }
+                        }
+                    }
+                }
+            }
+            if (a.type == AccountType.YIELD || (a.annualRate > 0 && !a.type.isLoan)) {
                 item {
                     Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
                         Column(Modifier.padding(18.dp)) {
@@ -228,7 +261,7 @@ fun AccountDetailScreen(
                     }
                 }
             }
-            item {
+            if (!a.type.isLoan) item {
                 Row(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     FilledTonalButton(onClick = { onTransfer(st) }, modifier = Modifier.weight(1f)) { Text("Transferir") }
                     FilledTonalButton(onClick = { adjusting = true }, modifier = Modifier.weight(1f)) { Text("Ajustar saldo") }
@@ -278,6 +311,14 @@ fun AccountDetailScreen(
             },
             dismissButton = { TextButton(onClick = { adjusting = false }) { Text("Cancelar") } },
         )
+    }
+}
+
+@Composable
+private fun YieldLikeStat(label: String, value: Long, st: AccountState, hidden: Boolean, modifier: Modifier) {
+    Column(modifier) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        AmountText(value, st.account.currency, MaterialTheme.typography.titleSmall, hidden = hidden)
     }
 }
 

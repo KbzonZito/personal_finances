@@ -100,6 +100,9 @@ fun AccountEditScreen(
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var loadedBalanceText by rememberSaveable { mutableStateOf("") }
     var paidThrough by rememberSaveable { mutableStateOf<Int?>(null) }
+    var loanInstallment by rememberSaveable { mutableStateOf("") }
+    var loanTotal by rememberSaveable { mutableStateOf("") }
+    var loanPaid by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(existing) {
         if (loaded || existing == null) return@LaunchedEffect
@@ -111,6 +114,11 @@ fun AccountEditScreen(
         initial = if (current != 0L) existing.currency.toMajor(current).toPlainString().replace('.', ',') else ""
         loadedBalanceText = initial
         paidThrough = existing.paidThroughPeriod
+        if (existing.type.isLoan) {
+            loanInstallment = existing.currency.toMajor(existing.loanInstallment).toPlainString().replace('.', ',')
+            loanTotal = existing.loanTotalInstallments.toString()
+            loanPaid = existing.loanPaidInstallments.toString()
+        }
         limit = if (existing.creditLimit != 0L) existing.currency.toMajor(existing.creditLimit).toPlainString().replace('.', ',') else ""
         closingDay = existing.closingDay.toString()
         dueDay = existing.dueDay.toString()
@@ -122,6 +130,7 @@ fun AccountEditScreen(
     }
 
     val valid = name.isNotBlank() && (!type.isCard || (Money.parse(limit, currency) ?: 0) > 0) &&
+        (!type.isLoan || ((Money.parse(loanInstallment, currency) ?: 0) > 0 && (loanTotal.toIntOrNull() ?: 0) > 0)) &&
         (closingDay.toIntOrNull() in 1..31) && (dueDay.toIntOrNull() in 1..31)
 
     val cycle = CardCycle((closingDay.toIntOrNull() ?: 20).coerceIn(1, 31), (dueDay.toIntOrNull() ?: 5).coerceIn(1, 31))
@@ -133,7 +142,7 @@ fun AccountEditScreen(
         val typed = (if (initial.trim().startsWith("-")) -1 else 1) * (Money.parse(initial, currency) ?: 0)
         // Si cambió el saldo actual, se "re-ancla": ese es el saldo de ahora y lo anterior queda como historial.
         val (initialBalance, anchor) = when {
-            type.isCard -> 0L to base.balanceAnchorAt
+            type.isCard || type.isLoan -> 0L to (if (existing == null) 0L else base.balanceAnchorAt)
             existing == null -> typed to 0L
             initial != loadedBalanceText -> typed to System.currentTimeMillis()
             else -> base.initialBalance to base.balanceAnchorAt
@@ -145,11 +154,14 @@ fun AccountEditScreen(
         initialBalance = initialBalance,
         balanceAnchorAt = anchor,
         paidThroughPeriod = if (type.isCard) paidThroughValue else 0,
+        loanInstallment = if (type.isLoan) Money.parse(loanInstallment, currency) ?: 0 else 0,
+        loanTotalInstallments = if (type.isLoan) loanTotal.toIntOrNull() ?: 0 else 0,
+        loanPaidInstallments = if (type.isLoan) (loanPaid.toIntOrNull() ?: 0).coerceIn(0, loanTotal.toIntOrNull() ?: 0) else 0,
         creditLimit = if (type.isCard) Money.parse(limit, currency) ?: 0 else 0,
         closingDay = closingDay.toIntOrNull() ?: 20,
         dueDay = dueDay.toIntOrNull() ?: 5,
-        annualRate = if (type == AccountType.YIELD || type == AccountType.SAVINGS) rate.replace(',', '.').toDoubleOrNull() ?: 0.0 else 0.0,
-        lastDigits = digits.takeIf { it.length == 4 },
+        annualRate = if (type == AccountType.YIELD || type == AccountType.SAVINGS || type.isLoan) rate.replace(',', '.').toDoubleOrNull() ?: 0.0 else 0.0,
+        lastDigits = digits.split(Regex("[^0-9]+")).filter { it.length == 4 }.distinct().joinToString(",").ifEmpty { null },
         color = color,
         includeInTotal = includeInTotal,
         archived = archived,
@@ -178,7 +190,28 @@ fun AccountEditScreen(
             Label("Moneda")
             CurrencyDropdown(currency) { currency = it }
 
-            AnimatedVisibility(!type.isCard) {
+            AnimatedVisibility(type.isLoan) {
+                Column {
+                    Field(loanInstallment, { loanInstallment = it }, "Valor de la cuota", KeyboardType.Decimal, prefix = currency.symbol)
+                    Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(loanTotal, { loanTotal = it.filter(Char::isDigit).take(3) }, label = { Text("Total de cuotas") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.weight(1f))
+                        OutlinedTextField(loanPaid, { loanPaid = it.filter(Char::isDigit).take(3) }, label = { Text("Ya pagadas") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.weight(1f))
+                    }
+                    Row(Modifier.padding(horizontal = 20.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(rate, { rate = it }, label = { Text("Tasa anual (%)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, modifier = Modifier.weight(1f))
+                        OutlinedTextField(dueDay, { dueDay = it.filter(Char::isDigit).take(2) }, label = { Text("Día de pago") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.weight(1f))
+                    }
+                    Text(
+                        "Para un hipotecario elige moneda UF: la deuda se valoriza en pesos con la UF del día. Cada pago que registres (transferencia al crédito) cuenta como una cuota.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 20.dp),
+                    )
+                }
+            }
+            AnimatedVisibility(!type.isCard && !type.isLoan) {
                 Column {
                     Field(initial, { initial = it }, "Saldo actual (hoy)", KeyboardType.Decimal, prefix = currency.symbol)
                     Text(
@@ -227,7 +260,12 @@ fun AccountEditScreen(
                     )
                 }
             }
-            Field(digits, { digits = it.filter(Char::isDigit).take(4) }, "Últimos 4 dígitos (opcional, para notificaciones)", KeyboardType.Number)
+            Field(digits, { digits = it.filter { c -> c.isDigit() || c == ',' || c == ' ' }.take(40) }, "Últimos 4 dígitos (opcional)", KeyboardType.Phone)
+            Text(
+                if (type.isCard) "Para reconocer las notificaciones. Si tienes tarjeta física y virtual, pon ambas: 1234, 5678"
+                else "Pon los de tu tarjeta de débito (y otras asociadas), separados por coma: así las compras con débito se asignan a esta cuenta.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 20.dp),
+            )
 
             Label("Color")
             LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.background
 import androidx.compose.ui.unit.dp
 import com.personalfinances.data.FinanceSnapshot
 import com.personalfinances.data.TxItem
@@ -47,7 +48,13 @@ import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun TransactionsScreen(snapshot: FinanceSnapshot, onOpenTransaction: (Long) -> Unit, contentPadding: PaddingValues) {
+fun TransactionsScreen(
+    snapshot: FinanceSnapshot,
+    onOpenTransaction: (Long) -> Unit,
+    contentPadding: PaddingValues,
+    onDelete: (Long) -> Unit = {},
+    onDuplicate: (Long) -> Unit = {},
+) {
     var query by rememberSaveable { mutableStateOf("") }
     var accountFilter by rememberSaveable { mutableStateOf<Long?>(null) }
     var typeFilter by rememberSaveable { mutableStateOf<TxType?>(null) }
@@ -104,7 +111,11 @@ fun TransactionsScreen(snapshot: FinanceSnapshot, onOpenTransaction: (Long) -> U
         filtered.forEach { (day, list) ->
             stickyHeader(key = "h$day") { DayHeader(day, list, snapshot) }
             items(list, key = { it.tx.id }) { item ->
-                Box(Modifier.animateItem()) { TransactionRow(item, snapshot.settings.hideAmounts, onClick = { onOpenTransaction(item.tx.id) }) }
+                Box(Modifier.animateItem()) {
+                    SwipeRow(onDelete = { onDelete(item.tx.id) }, onDuplicate = { onDuplicate(item.tx.id) }) {
+                        TransactionRow(item, snapshot.settings.hideAmounts, onClick = { onOpenTransaction(item.tx.id) })
+                    }
+                }
             }
         }
         item { Spacer(Modifier.height(88.dp)) }
@@ -133,3 +144,42 @@ private fun DayHeader(epochDay: Long, list: List<TxItem>, snapshot: FinanceSnaps
         }
     }
 }
+
+/** Deslizar a la izquierda: eliminar. A la derecha: duplicar (con fecha de hoy). */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeRow(onDelete: () -> Unit, onDuplicate: () -> Unit, content: @Composable () -> Unit) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val state = androidx.compose.material3.rememberSwipeToDismissBoxState(
+        confirmValueChange = { v ->
+            when (v) {
+                androidx.compose.material3.SwipeToDismissBoxValue.EndToStart -> { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); onDelete(); true }
+                androidx.compose.material3.SwipeToDismissBoxValue.StartToEnd -> { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); onDuplicate(); false }
+                else -> false
+            }
+        },
+        positionalThreshold = { it * 0.35f },
+    )
+    androidx.compose.material3.SwipeToDismissBox(
+        state = state,
+        backgroundContent = {
+            val dir = state.dismissDirection
+            val del = dir == androidx.compose.material3.SwipeToDismissBoxValue.EndToStart
+            val color = when (dir) {
+                androidx.compose.material3.SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
+                androidx.compose.material3.SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.primaryContainer
+                else -> Color.Transparent
+            }
+            Row(
+                Modifier.fillMaxSize().androidxBackground(color).padding(horizontal = 24.dp),
+                horizontalArrangement = if (del) Arrangement.End else Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (dir != androidx.compose.material3.SwipeToDismissBoxValue.Settled) Text(if (del) "Eliminar" else "Duplicar", style = MaterialTheme.typography.labelLarge)
+            }
+        },
+        content = { androidx.compose.foundation.layout.Box(Modifier.androidxBackground(MaterialTheme.colorScheme.background)) { content() } },
+    )
+}
+
+private fun Modifier.androidxBackground(c: Color) = this.background(c)

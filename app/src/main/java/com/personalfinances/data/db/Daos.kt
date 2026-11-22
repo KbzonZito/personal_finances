@@ -66,6 +66,9 @@ interface InstallmentDao {
 
     @Insert suspend fun insertAll(items: List<InstallmentEntity>)
 
+    @Query("SELECT * FROM installments WHERE transactionId = :txId")
+    suspend fun forTransaction(txId: Long): List<InstallmentEntity>
+
     @Query("DELETE FROM installments WHERE transactionId = :txId")
     suspend fun deleteForTransaction(txId: Long)
 

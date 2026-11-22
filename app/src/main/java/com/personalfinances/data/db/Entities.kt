@@ -18,9 +18,13 @@ enum class AccountType(val label: String, val emoji: String) {
     SAVINGS("Ahorro", "🐷"),
     YIELD("Cuenta remunerada", "📈"),
     CREDIT_CARD("Tarjeta de crédito", "💳"),
-    INVESTMENT("Inversión", "📊");
+    INVESTMENT("Inversión", "📊"),
+    LOAN("Crédito / préstamo", "🏛️");
 
     val isCard get() = this == CREDIT_CARD
+    val isLoan get() = this == LOAN
+    /** Cuentas con dinero disponible (no tarjetas ni créditos). */
+    val isLiquid get() = this != CREDIT_CARD && this != LOAN
 }
 
 @Serializable
@@ -38,7 +42,7 @@ data class AccountEntity(
     /** Tasa anual en %, solo para cuentas remuneradas. */
     val annualRate: Double = 0.0,
     val lastAccrualEpochDay: Long = 0,
-    /** Últimos 4 dígitos, para asociar notificaciones. */
+    /** Últimos 4 dígitos (uno o varios separados por coma: tarjeta física, virtual, débito…), para asociar notificaciones. */
     val lastDigits: String? = null,
     val archived: Boolean = false,
     val includeInTotal: Boolean = true,
@@ -51,9 +55,15 @@ data class AccountEntity(
     @ColumnInfo(defaultValue = "0") val balanceAnchorAt: Long = 0,
     /** Tarjetas: estados de cuenta hasta este yyyymm se consideran pagados (0 = ninguno). */
     @ColumnInfo(defaultValue = "0") val paidThroughPeriod: Int = 0,
+    /** Créditos: valor de la cuota (en la moneda de la cuenta, ej. UF). */
+    @ColumnInfo(defaultValue = "0") val loanInstallment: Long = 0,
+    @ColumnInfo(defaultValue = "0") val loanTotalInstallments: Int = 0,
+    /** Cuotas ya pagadas al crear la cuenta; las siguientes se cuentan con cada pago (transferencia) registrado. */
+    @ColumnInfo(defaultValue = "0") val loanPaidInstallments: Int = 0,
 ) {
     val currency: Currency get() = Currency.fromCode(currencyCode)
     val cycle: CardCycle get() = CardCycle(closingDay, dueDay)
+    val digitsList: List<String> get() = lastDigits.orEmpty().split(Regex("[^0-9]+")).filter { it.length == 4 }
 }
 
 @Serializable
@@ -156,6 +166,8 @@ data class DetectionEntity(
     val status: DetectionStatus = DetectionStatus.PENDING,
     /** Si viene de un movimiento recurrente por confirmar (no de una notificación). */
     val recurringId: Long? = null,
+    /** CREDIT / DEBIT si la notificación lo indicaba. */
+    val cardKind: String? = null,
 ) {
     val currency: Currency get() = Currency.fromCode(currencyCode)
 }

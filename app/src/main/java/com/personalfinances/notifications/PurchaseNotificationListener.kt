@@ -43,6 +43,7 @@ class PurchaseNotificationListener : NotificationListenerService() {
                 merchant = parsed.merchant,
                 isIncome = parsed.isIncome,
                 lastDigits = parsed.lastDigits,
+                cardKind = parsed.cardKind?.name,
                 postedAt = sbn.postTime,
             )
             val id = container.repository.addDetection(detection) ?: return@launch

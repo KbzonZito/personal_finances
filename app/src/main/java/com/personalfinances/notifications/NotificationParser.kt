@@ -3,6 +3,9 @@ package com.personalfinances.notifications
 import com.personalfinances.domain.Currency
 import com.personalfinances.domain.Money
 
+/** Tipo de medio de pago, si la notificación lo dice. */
+enum class CardKind { CREDIT, DEBIT }
+
 data class ParsedTransaction(
     val amount: Long,
     val currency: Currency,
@@ -10,6 +13,7 @@ data class ParsedTransaction(
     val isIncome: Boolean,
     /** Últimos 4 dígitos de la tarjeta/cuenta, si aparecen. */
     val lastDigits: String?,
+    val cardKind: CardKind? = null,
 )
 
 /**
@@ -41,6 +45,20 @@ object NotificationParser {
     private val merchantRegex = Regex(
         """(?i)\b(?:en|a|at|comercio:?)\s+([A-Za-zÁÉÍÓÚÑáéíóúñ0-9][A-Za-zÁÉÍÓÚÑáéíóúñ0-9*&.'\- ]{1,40}?)(?=\s+(?:el|por|con|a las|del|on|for|with|usando|tarjeta)\b|[,.;:!](?:\s|$)|\s*$)"""
     )
+
+    private val creditRegex = Regex("""(?i)(cr[ée]dito|credit card|tarjeta de cr)""")
+    private val debitRegex = Regex("""(?i)(d[ée]bito|debit|cuenta corriente|cta\.? ?cte|cuenta vista|cuenta ?rut|prepago|redcompra)""")
+
+    /** "crédito" / "débito" (o cuenta corriente, vista, RUT…) en el texto; null si no dice o es ambiguo. */
+    fun cardKind(text: String): CardKind? {
+        val credit = creditRegex.containsMatchIn(text)
+        val debit = debitRegex.containsMatchIn(text)
+        return when {
+            credit && !debit -> CardKind.CREDIT
+            debit && !credit -> CardKind.DEBIT
+            else -> null
+        }
+    }
 
     fun parse(packageName: String, title: String?, text: String?, defaultCurrency: Currency = Currency.CLP): ParsedTransaction? {
         val t = title.orEmpty().trim()
@@ -79,6 +97,6 @@ object NotificationParser {
         }?.take(40)
 
         val digits = digitsRegex.find(full)?.groupValues?.get(1)
-        return ParsedTransaction(amount, currency, merchant, isIncome, digits)
+        return ParsedTransaction(amount, currency, merchant, isIncome, digits, cardKind(full))
     }
 }

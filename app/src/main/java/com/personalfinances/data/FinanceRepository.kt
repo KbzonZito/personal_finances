@@ -201,11 +201,28 @@ class FinanceRepository(
         d.detectionId?.let { detId ->
             db.detections().get(detId)?.let { det ->
                 db.rules().putSourceRule(SourceRuleEntity(packageName = det.packageName, lastDigits = det.lastDigits.orEmpty(), accountId = d.accountId))
+                det.cardKind?.let { k -> db.rules().putSourceRule(SourceRuleEntity(packageName = det.packageName, lastDigits = AccountMatcher.KIND_PREFIX + k, accountId = d.accountId)) }
             }
             db.detections().setStatus(detId, DetectionStatus.CONFIRMED)
         }
         onDataChanged()
         return id
+    }
+
+    /** Elimina y devuelve lo necesario para deshacer. */
+    suspend fun deleteForUndo(id: Long): Pair<TransactionEntity, List<InstallmentEntity>>? {
+        val tx = db.transactions().get(id) ?: return null
+        val inst = db.installments().forTransaction(id)
+        deleteTransaction(id)
+        return tx to inst
+    }
+
+    suspend fun restore(deleted: Pair<TransactionEntity, List<InstallmentEntity>>) {
+        db.withTransaction {
+            db.transactions().upsert(deleted.first)
+            db.installments().insertAll(deleted.second.map { it.copy(id = 0) })
+        }
+        onDataChanged()
     }
 
     suspend fun deleteTransaction(id: Long) {
@@ -233,13 +250,11 @@ class FinanceRepository(
     suspend fun dismissDetection(id: Long) = db.detections().setStatus(id, DetectionStatus.DISMISSED)
 
     /** Cuenta sugerida para una notificación según lo aprendido o los últimos dígitos. */
-    suspend fun suggestAccount(packageName: String, lastDigits: String?): Long? {
-        val accounts = db.accounts().getAll().filter { !it.archived }
-        if (lastDigits != null) accounts.firstOrNull { it.lastDigits == lastDigits }?.let { return it.id }
-        val rules = db.rules().sourceRules().filter { it.packageName == packageName }
-        val rule = rules.firstOrNull { it.lastDigits == lastDigits.orEmpty() } ?: rules.firstOrNull()
-        return rule?.accountId?.takeIf { id -> accounts.any { it.id == id } }
-    }
+    suspend fun suggestAccount(packageName: String, lastDigits: String?, cardKind: String? = null): Long? =
+        AccountMatcher.suggest(
+            db.accounts().getAll(), db.rules().sourceRules(), packageName, lastDigits,
+            cardKind?.let { runCatching { com.personalfinances.notifications.CardKind.valueOf(it) }.getOrNull() },
+        )
 
     // ---------- Metas ----------
 

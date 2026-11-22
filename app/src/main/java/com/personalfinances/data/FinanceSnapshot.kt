@@ -25,6 +25,7 @@ import java.time.YearMonth
 
 data class AccountState(
     val account: AccountEntity,
+    val loan: com.personalfinances.domain.LoanStatus? = null,
     /** Saldo en la moneda de la cuenta. Para tarjetas: -(cupo utilizado). */
     val balance: Long,
     val card: CardSummary? = null,
@@ -124,9 +125,15 @@ data class FinanceSnapshot(
 
             val states = accounts.map { a ->
                 val card = if (a.type.isCard) balances.cards[a.id] else null
-                val bal = if (card != null) -card.used else balances.balances[a.id] ?: 0
+                val loan = balances.loans[a.id]
+                val bal = when {
+                    card != null -> -card.used
+                    loan != null -> -loan.principal
+                    else -> balances.balances[a.id] ?: 0
+                }
                 AccountState(
                     account = a,
+                    loan = loan,
                     balance = bal,
                     card = card,
                     monthlyYield = if (a.annualRate > 0) YieldAccrual.project(bal, a.annualRate, 30) else 0,
@@ -183,7 +190,11 @@ data class FinanceSnapshot(
 }
 
 object Balances {
-    data class Result(val balances: Map<Long, Long>, val cards: Map<Long, CardSummary>)
+    data class Result(
+        val balances: Map<Long, Long>,
+        val cards: Map<Long, CardSummary>,
+        val loans: Map<Long, com.personalfinances.domain.LoanStatus> = emptyMap(),
+    )
 
     private fun anchorDay(a: AccountEntity): Long =
         if (a.balanceAnchorAt == 0L) Long.MIN_VALUE
@@ -248,7 +259,14 @@ object Balances {
                 .map { InstallmentLine(it.period.toYearMonth(), it.amount, it.principal) }
             a.id to CardCalculator.summarize(a.cycle, a.creditLimit, lines, credits[a.id] ?: 0, today)
         }
-        return Result(bal, cards)
+        // Créditos: cada pago registrado (transferencia hacia el crédito) es una cuota.
+        val loans = accounts.filter { it.type.isLoan }.associate { a ->
+            val payments = txs.count { it.type == TxType.TRANSFER && it.toAccountId == a.id && ok(a.id, it) }
+            a.id to com.personalfinances.domain.Loans.status(
+                a.loanInstallment, a.loanTotalInstallments, a.loanPaidInstallments + payments, a.annualRate, a.dueDay, today,
+            )
+        }
+        return Result(bal, cards, loans)
     }
 }
 

@@ -29,6 +29,9 @@ App Android de finanzas personales: minimalista, rápida y pensada para Chile (C
 - **Favoritos**: los movimientos que repites (ej. "☕ Café $3.500") aparecen como atajos en la hoja rápida.
 - **Metas de ahorro**: asociadas a una cuenta (el avance es su saldo y considera su rentabilidad) o con abonos a mano; con fecha límite te dice cuánto ahorrar al mes.
 - **Animaciones**: la tarjeta de cada cuenta se transforma en su pantalla de detalle, gesto "atrás" predictivo (Android 14+) y splash screen hasta que los datos están listos.
+- **Créditos de consumo e hipotecarios** (también en UF): deuda calculada con el sistema francés, cuotas pagadas, intereses por pagar y fecha del último pago; la deuda en UF se valoriza en pesos con la UF del día. Botón "Pagar cuota".
+- **Reconoce débito vs. crédito**: usa las palabras de la notificación ("crédito", "débito", "cuenta corriente"…), los últimos dígitos (varios por cuenta: tarjeta física, virtual, débito) y lo que aprendió de tus confirmaciones.
+- **Deslizar** un movimiento para eliminarlo (con "Deshacer") o duplicarlo. Widget de **tarjetas** con cupo y próximo pago.
 - **Recordatorios de tarjetas**: 3 días antes del vencimiento, el día del vencimiento y el día de cierre (nunca de noche).
 - **Agregar rápido**: widget de pantalla de inicio, tile en ajustes rápidos, accesos directos del ícono (mantener presionado) y teclado numérico propio.
 - **Respaldo**: los datos viven solo en el teléfono (Room). Respaldo automático semanal a una carpeta que elijas (guarda los últimos 6), exportar/importar JSON manual y backup automático de Android.

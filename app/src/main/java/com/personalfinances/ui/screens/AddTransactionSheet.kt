@@ -115,6 +115,10 @@ data class AddRequest(
     val accountId: Long? = null,
     val toAccountId: Long? = null,
     val amount: Long? = null,
+    /** Moneda de [amount] si no es la de la cuenta de origen (ej. cuota de un crédito en UF). */
+    val amountCurrency: Currency? = null,
+    /** Crea un movimiento nuevo copiando este (fecha de hoy). */
+    val duplicateOf: Long? = null,
 )
 
 private enum class InterestMode(val label: String) { NONE("Sin interés"), INSTALLMENT("Valor cuota"), TOTAL("Total"), RATE("Tasa %") }
@@ -190,7 +194,7 @@ fun AddTransactionContent(
     LaunchedEffect(request, snapshot.loaded) {
         if (initialized || !snapshot.loaded) return@LaunchedEffect
         initialized = true
-        val tx = request.transactionId?.let { repo.transaction(it) }
+        val tx = (request.transactionId ?: request.duplicateOf)?.let { repo.transaction(it) }
         if (tx != null) {
             type = if (tx.type in types) tx.type else TxType.EXPENSE
             accountId = tx.accountId
@@ -209,7 +213,8 @@ fun AddTransactionContent(
             description = tx.description
             epochDay = tx.epochDay
             installments = tx.installmentCount
-            paidInstallments = tx.installmentsPaid
+            paidInstallments = if (request.duplicateOf != null) 0 else tx.installmentsPaid
+            if (request.duplicateOf != null) epochDay = LocalDate.now().toEpochDay()
             deferMonths = tx.deferMonths
             interestMode = runCatching { InterestMode.valueOf(tx.interestMode) }.getOrDefault(InterestMode.NONE)
             interestText = when (interestMode) {
@@ -238,7 +243,7 @@ fun AddTransactionContent(
             type = if (det.isIncome) TxType.INCOME else TxType.EXPENSE
             description = det.merchant.orEmpty()
             epochDay = Instant.ofEpochMilli(det.postedAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay()
-            accountId = repo.suggestAccount(det.packageName, det.lastDigits)
+            accountId = repo.suggestAccount(det.packageName, det.lastDigits, det.cardKind)
                 ?: accounts.firstOrNull { it.currencyCode == det.currencyCode }?.id ?: accounts.firstOrNull()?.id
             val c = accounts.firstOrNull { it.id == accountId }?.currency ?: det.currency
             if (c != det.currency) entryCurrency = det.currency
@@ -246,15 +251,18 @@ fun AddTransactionContent(
             categoryId = repo.suggestCategory(description)
             return@LaunchedEffect
         }
-        request.amount?.let { amountText = minorToKeypad(it, accounts.firstOrNull { a -> a.id == (request.accountId ?: request.toAccountId) }?.currency ?: currency) }
         if (accountId == null) {
             accountId = if (type == TxType.TRANSFER) {
-                accounts.firstOrNull { !it.type.isCard && it.id != toAccountId }?.id
+                accounts.firstOrNull { it.type.isLiquid && it.id != toAccountId }?.id
             } else {
                 snapshot.transactions.take(40).filter { it.tx.type == type }
                     .groupingBy { it.tx.accountId }.eachCount().maxByOrNull { it.value }?.key
                     ?.takeIf { id -> accounts.any { it.id == id } } ?: accounts.firstOrNull()?.id
             }
+        }
+        request.amount?.let { amt ->
+            val fromCur = accounts.firstOrNull { it.id == accountId }?.currency ?: snapshot.settings.mainCurrency
+            amountText = minorToKeypad(snapshot.settings.rates.convert(amt, request.amountCurrency ?: fromCur, fromCur), fromCur)
         }
     }
 

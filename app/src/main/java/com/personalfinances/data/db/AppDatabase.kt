@@ -14,7 +14,7 @@ import androidx.room.TypeConverters
         AccountEntity::class, TransactionEntity::class, InstallmentEntity::class, CategoryEntity::class,
         DetectionEntity::class, SourceRuleEntity::class, MerchantRuleEntity::class, RecurringEntity::class, BudgetEntity::class, GoalEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.From1To2::class),
@@ -22,6 +22,7 @@ import androidx.room.TypeConverters
         AutoMigration(from = 3, to = 4),
         AutoMigration(from = 4, to = 5),
         AutoMigration(from = 5, to = 6),
+        AutoMigration(from = 6, to = 7),
     ],
 )
 @TypeConverters(Converters::class)
