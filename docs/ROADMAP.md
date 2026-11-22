@@ -1,5 +1,7 @@
 # Roadmap
 
+> El plan por fases hacia la 1.0 está en [PLAN-1.0.md](PLAN-1.0.md). Este archivo queda como historial de lo implementado.
+
 Esfuerzo estimado: **S** (horas) · **M** (1–2 días) · **L** (varios días).
 Marca con `[x]` lo que se vaya haciendo.
 
